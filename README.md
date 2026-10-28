@@ -182,3 +182,19 @@ Services started:
 - `prills_postgres`: PostgreSQL 15 database on port 5432
 - `prills_backend`: FastAPI backend on port 8000 (with health check)
 - `prills_frontend`: Next.js web application on port 3000
+
+---
+
+## Deploy Frontend to Vercel
+
+[![Deploy with Vercel](https://vercel.com/button)](https://vercel.com/new/clone?repository-url=https%3A%2F%2Fgithub.com%2Frohiiitwc%2Fprills.ai&root-directory=frontend)
+
+### Quick Steps:
+1. Click the **Deploy with Vercel** button above or go to [vercel.com/new](https://vercel.com/new).
+2. Import your GitHub repository: `rohiiitwc/prills.ai`.
+3. Set **Root Directory** to `frontend`.
+4. *(Optional)* Under **Environment Variables**, configure:
+   - `NEXT_PUBLIC_API_URL`: Your deployed FastAPI backend URL (e.g., `https://your-backend.railway.app/api/v1`)
+   - `NEXT_PUBLIC_WS_URL`: Your deployed WebSocket URL (e.g., `wss://your-backend.railway.app/ws`)
+5. Click **Deploy**. Vercel will automatically build the Next.js App Router frontend and assign a live production URL.
+
