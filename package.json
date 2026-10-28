@@ -1,0 +1,16 @@
+{
+  "name": "prills-ai",
+  "version": "1.0.0",
+  "private": true,
+  "description": "PRILLS.AI Real-Time Telegram Binary Trading Signal Intelligence Website",
+  "scripts": {
+    "dev": "npm run dev --prefix frontend",
+    "build": "npm run build --prefix frontend",
+    "start": "npm run start --prefix frontend",
+    "frontend": "npm run dev --prefix frontend",
+    "backend": "python -m uvicorn backend.app.main:app --host 127.0.0.1 --port 8000 --reload",
+    "seed": "python backend/reset_and_seed.py",
+    "test": "python -m pytest backend/tests -v",
+    "lint": "npm run lint --prefix frontend"
+  }
+}

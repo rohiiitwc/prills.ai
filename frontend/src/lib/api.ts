@@ -1,0 +1,189 @@
+import { DashboardStats, LatestSignalsData, PaginatedSignals, Signal, TelegramStatus } from './types';
+
+export function getApiBaseUrl(): string {
+  if (typeof window !== 'undefined') {
+    const host = window.location.hostname || 'localhost';
+    const targetHost = host === 'localhost' ? '127.0.0.1' : host;
+    return `http://${targetHost}:8000/api/v1`;
+  }
+  return process.env.NEXT_PUBLIC_API_URL || 'http://127.0.0.1:8000/api/v1';
+}
+
+export function getWsBaseUrl(): string {
+  if (typeof window !== 'undefined') {
+    const host = window.location.hostname || 'localhost';
+    const targetHost = host === 'localhost' ? '127.0.0.1' : host;
+    const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
+    return `${protocol}//${targetHost}:8000/ws`;
+  }
+  return process.env.NEXT_PUBLIC_WS_URL || 'ws://127.0.0.1:8000/ws';
+}
+
+export const API_BASE_URL = 'http://127.0.0.1:8000/api/v1';
+export const WS_BASE_URL = 'ws://127.0.0.1:8000/ws';
+
+async function safeFetchJson<T>(endpoint: string, fallback: T): Promise<T> {
+  const primaryUrl = `${getApiBaseUrl()}${endpoint}`;
+  try {
+    const res = await fetch(primaryUrl, { cache: 'no-store' });
+    if (res.ok) return await res.json();
+  } catch {
+    // Attempt fallback via Next.js internal proxy rewrite
+    try {
+      const proxyRes = await fetch(`/api/v1${endpoint}`, { cache: 'no-store' });
+      if (proxyRes.ok) return await proxyRes.json();
+    } catch {
+      // Safe fallback
+    }
+  }
+  return fallback;
+}
+
+export async function fetchDashboardStats(): Promise<DashboardStats> {
+  return safeFetchJson<DashboardStats>('/signals/stats', {
+    today_signal_count: 0,
+    today_win_count: 0,
+    today_loss_count: 0,
+    today_draw_count: 0,
+    today_pending_count: 0,
+    win_rate_percentage: 0,
+    otc_signals_today: 0,
+    live_signals_today: 0,
+    otc_win_count: 0,
+    otc_loss_count: 0,
+    otc_win_rate_percentage: 0,
+    live_win_count: 0,
+    live_loss_count: 0,
+    live_win_rate_percentage: 0,
+    telegram_connected: false,
+    telegram_auth_status: 'CONNECTING',
+    last_sync_at: null,
+    source_1_status: 'CONNECTING',
+    source_2_status: 'CONNECTING'
+  });
+}
+
+export async function fetchLatestSignals(): Promise<LatestSignalsData> {
+  return safeFetchJson<LatestSignalsData>('/signals/latest', {
+    latest_otc: null,
+    latest_live: null,
+    recent_results: [],
+    pending_signals: []
+  });
+}
+
+export async function fetchSignals(params: {
+  market?: string;
+  source_username?: string;
+  asset?: string;
+  direction?: string;
+  status?: string;
+  search?: string;
+  start_date?: string;
+  end_date?: string;
+  page?: number;
+  page_size?: number;
+}): Promise<PaginatedSignals> {
+  const query = new URLSearchParams();
+  Object.entries(params).forEach(([key, val]) => {
+    if (val !== undefined && val !== null && val !== '') {
+      query.append(key, String(val));
+    }
+  });
+
+  return safeFetchJson<PaginatedSignals>(`/signals?${query.toString()}`, {
+    items: [],
+    total: 0,
+    page: params.page || 1,
+    page_size: params.page_size || 20,
+    total_pages: 1
+  });
+}
+
+export async function fetchSignalDetail(id: number): Promise<Signal | null> {
+  return safeFetchJson<Signal | null>(`/signals/${id}`, null);
+}
+
+export async function fetchTelegramStatus(): Promise<TelegramStatus> {
+  return safeFetchJson<TelegramStatus>('/telegram/status', {
+    is_connected: false,
+    status: 'CONNECTING',
+    error_message: null,
+    last_sync_at: null,
+    sources: []
+  });
+}
+
+const ADMIN_KEY = process.env.NEXT_PUBLIC_ADMIN_KEY || 'prills-admin-secret-2026';
+
+export async function requestTelegramCode(phone_number?: string, api_id?: number, api_hash?: string) {
+  const res = await fetch(`${getApiBaseUrl()}/telegram/auth/request-code`, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      'X-Admin-Key': ADMIN_KEY
+    },
+    body: JSON.stringify({ phone_number: phone_number || undefined, api_id: api_id || undefined, api_hash: api_hash || undefined })
+  });
+  const data = await res.json();
+  if (!res.ok) throw new Error(data.detail || 'Failed to request code');
+  return data;
+}
+
+export async function submitTelegramCode(phone_code: string, phone_number?: string) {
+  const res = await fetch(`${getApiBaseUrl()}/telegram/auth/submit-code`, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      'X-Admin-Key': ADMIN_KEY
+    },
+    body: JSON.stringify({ phone_code, phone_number })
+  });
+  const data = await res.json();
+  if (!res.ok) throw new Error(data.detail || 'Failed to verify code');
+  return data;
+}
+
+export async function submitTelegram2FA(password: string) {
+  const res = await fetch(`${getApiBaseUrl()}/telegram/auth/submit-2fa`, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      'X-Admin-Key': ADMIN_KEY
+    },
+    body: JSON.stringify({ password })
+  });
+  const data = await res.json();
+  if (!res.ok) throw new Error(data.detail || 'Failed to verify 2FA password');
+  return data;
+}
+
+export async function injectTestMessage(source_username: string, raw_text: string) {
+  const res = await fetch(`${getApiBaseUrl()}/telegram/inject-test-message`, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      'X-Admin-Key': ADMIN_KEY
+    },
+    body: JSON.stringify({ source_username, raw_text, is_test: true })
+  });
+  const data = await res.json();
+  if (!res.ok) throw new Error(data.detail || 'Failed to inject test message');
+  return data;
+}
+
+export function getExportCsvUrl(market?: string, status?: string): string {
+  const query = new URLSearchParams();
+  if (market) query.append('market', market);
+  if (status) query.append('status', status);
+  return `${getApiBaseUrl()}/signals/export?${query.toString()}`;
+}
+
+export async function syncTelegramChannels(): Promise<boolean> {
+  try {
+    const res = await fetch(`${getApiBaseUrl()}/telegram/sync`, { method: 'POST' });
+    return res.ok;
+  } catch {
+    return false;
+  }
+}
