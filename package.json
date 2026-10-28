@@ -12,5 +12,13 @@
     "seed": "python backend/reset_and_seed.py",
     "test": "python -m pytest backend/tests -v",
     "lint": "npm run lint --prefix frontend"
+  },
+  "workspaces": [
+    "frontend"
+  ],
+  "dependencies": {
+    "next": "16.4.3",
+    "react": "19.3.0",
+    "react-dom": "19.3.0"
   }
 }
