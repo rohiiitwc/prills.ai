@@ -1,4 +1,5 @@
-/** @type {import('next').NextConfig} */
+import type { NextConfig } from 'next';
+
 const rawBackendUrl =
   process.env.BACKEND_URL ||
   process.env.NEXT_PUBLIC_API_URL?.replace(/\/api\/v1\/?$/, '') ||
@@ -6,7 +7,16 @@ const rawBackendUrl =
 
 const backendUrl = rawBackendUrl.replace(/\/+$/, '');
 
-const nextConfig = {
+const nextConfig: NextConfig = {
+  async redirects() {
+    return [
+      {
+        source: '/telegram',
+        destination: '/',
+        permanent: false,
+      },
+    ];
+  },
   async rewrites() {
     return [
       {
@@ -18,4 +28,3 @@ const nextConfig = {
 };
 
 export default nextConfig;
-

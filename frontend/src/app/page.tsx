@@ -19,6 +19,7 @@ export default function HomePage() {
   const [resultsMarket, setResultsMarket] = useState<'ALL' | 'OTC' | 'LIVE'>('ALL');
   const [pendingMarket, setPendingMarket] = useState<'ALL' | 'OTC' | 'LIVE'>('ALL');
   const [, setLoading] = useState(true);
+  const [, setNowTick] = useState(0);
   const wsRef = useRef<WebSocket | null>(null);
 
   const loadAllData = async () => {
@@ -154,10 +155,16 @@ export default function HomePage() {
       }).catch(() => {});
     }, 15000);
 
+    // Periodic ticker (every 5 seconds) to transition any pending signals > 5m to UNKNOWN
+    const timeoutTicker = setInterval(() => {
+      setNowTick(t => t + 1);
+    }, 5000);
+
     return () => {
       isUnmounted = true;
       clearInterval(pingInterval);
       clearInterval(statusPollInterval);
+      clearInterval(timeoutTicker);
       if (reconnectTimeout) {
         clearTimeout(reconnectTimeout);
       }
@@ -306,21 +313,60 @@ export default function HomePage() {
 
           {/* RECENT OUTCOMES & PENDING QUEUE (SEPARATED BY OTC & LIVE MARKETS) */}
           {(() => {
-            const otcResults = latestData?.recent_otc_results && latestData.recent_otc_results.length > 0
-              ? latestData.recent_otc_results
-              : (latestData?.recent_results || []).filter(s => s.market_category === 'OTC');
+            const currentTime = Date.now();
+            const isSignalPast5Minutes = (s: Signal) => {
+              if (s.status === 'UNKNOWN' || s.reported_result === 'UNKNOWN') return true;
+              if (s.status === 'WIN' || s.status === 'LOSS') return false;
+              const dateStr = s.signal_published_at || s.website_received_at || s.created_at;
+              if (dateStr) {
+                const t = new Date(dateStr).getTime();
+                if (!isNaN(t) && currentTime - t >= 300000) return true;
+              }
+              return false;
+            };
 
-            const liveResults = latestData?.recent_live_results && latestData.recent_live_results.length > 0
-              ? latestData.recent_live_results
-              : (latestData?.recent_results || []).filter(s => s.market_category === 'LIVE');
-
-            const otcPending = latestData?.pending_otc_signals && latestData.pending_otc_signals.length > 0
+            const rawOtcPending = latestData?.pending_otc_signals && latestData.pending_otc_signals.length > 0
               ? latestData.pending_otc_signals
               : (latestData?.pending_signals || []).filter(s => s.market_category === 'OTC');
 
-            const livePending = latestData?.pending_live_signals && latestData.pending_live_signals.length > 0
+            const rawLivePending = latestData?.pending_live_signals && latestData.pending_live_signals.length > 0
               ? latestData.pending_live_signals
               : (latestData?.pending_signals || []).filter(s => s.market_category === 'LIVE');
+
+            const otcTimedOut: Signal[] = rawOtcPending.filter(isSignalPast5Minutes).map(s => ({
+              ...s,
+              status: 'UNKNOWN' as const,
+              reported_result: 'UNKNOWN' as const,
+              review_reason: 'No result reported in Telegram within 5 minutes'
+            }));
+
+            const liveTimedOut: Signal[] = rawLivePending.filter(isSignalPast5Minutes).map(s => ({
+              ...s,
+              status: 'UNKNOWN' as const,
+              reported_result: 'UNKNOWN' as const,
+              review_reason: 'No result reported in Telegram within 5 minutes'
+            }));
+
+            const otcPending = rawOtcPending.filter(s => !isSignalPast5Minutes(s));
+            const livePending = rawLivePending.filter(s => !isSignalPast5Minutes(s));
+
+            const baseOtcResults = latestData?.recent_otc_results && latestData.recent_otc_results.length > 0
+              ? latestData.recent_otc_results
+              : (latestData?.recent_results || []).filter(s => s.market_category === 'OTC');
+
+            const baseLiveResults = latestData?.recent_live_results && latestData.recent_live_results.length > 0
+              ? latestData.recent_live_results
+              : (latestData?.recent_results || []).filter(s => s.market_category === 'LIVE');
+
+            const otcResults = [
+              ...otcTimedOut,
+              ...baseOtcResults.filter(r => !otcTimedOut.some(to => to.id === r.id))
+            ];
+
+            const liveResults = [
+              ...liveTimedOut,
+              ...baseLiveResults.filter(r => !liveTimedOut.some(to => to.id === r.id))
+            ];
 
             const renderResultRow = (sig: Signal, idx: number, prefix: string) => {
               const isWin = sig.reported_result === 'WIN' || sig.status === 'WIN';

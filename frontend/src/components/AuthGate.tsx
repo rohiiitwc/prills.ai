@@ -550,3 +550,4 @@ export const AuthGate: React.FC<AuthGateProps> = ({ children }) => {
     </div>
   );
 };
+

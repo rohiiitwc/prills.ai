@@ -11,3 +11,4 @@ export const ClientProviders: React.FC<{ children: React.ReactNode }> = ({ child
     </AuthProvider>
   );
 };
+

@@ -155,3 +155,4 @@ async def login_user(payload: UserLoginRequest, db: AsyncSession = Depends(get_d
             created_at=user.created_at
         )
     )
+

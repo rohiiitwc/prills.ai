@@ -2,7 +2,7 @@
 
 import React, { useState, useEffect, Suspense } from 'react';
 import Link from 'next/link';
-import { useSearchParams } from 'next/navigation';
+import { useSearchParams, useRouter } from 'next/navigation';
 import { Navbar } from '../../components/Navbar';
 import { TelegramStatus } from '../../lib/types';
 import {
@@ -35,6 +35,13 @@ import {
 } from 'lucide-react';
 
 function TelegramLabContent() {
+  const router = useRouter();
+
+  useEffect(() => {
+    // Hide /telegram from browser URL by automatically redirecting to main dashboard
+    router.replace('/');
+  }, [router]);
+
   const [status, setStatus] = useState<TelegramStatus | null>(null);
   const [loading, setLoading] = useState(true);
   const [actionLoading, setActionLoading] = useState(false);
