@@ -14,7 +14,7 @@ from backend.app.config import settings
 from backend.app.database import init_db
 from backend.app.telegram_service import telegram_service
 from backend.app.websocket_manager import ws_manager
-from backend.app.routes import signals, telegram, channels
+from backend.app.routes import signals, telegram, channels, auth
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
@@ -46,6 +46,7 @@ app.add_middleware(
 app.include_router(signals.router, prefix=settings.API_V1_STR)
 app.include_router(telegram.router, prefix=settings.API_V1_STR)
 app.include_router(channels.router, prefix=settings.API_V1_STR)
+app.include_router(auth.router, prefix=settings.API_V1_STR)
 
 @app.get("/")
 async def root():

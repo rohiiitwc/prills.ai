@@ -13,9 +13,12 @@ import {
   Cpu, 
   Clock, 
   Menu, 
-  X 
+  X,
+  User,
+  LogOut 
 } from 'lucide-react';
 import { syncTelegramChannels, reconnectTelegram } from '../lib/api';
+import { useAuth } from '../lib/auth';
 
 interface NavbarProps {
   isConnected: boolean;
@@ -25,6 +28,7 @@ interface NavbarProps {
 }
 
 export const Navbar: React.FC<NavbarProps> = ({ isConnected, telegramStatus, lastSyncAt, onSync }) => {
+  const { user, logout } = useAuth();
   const pathname = usePathname();
   const [mobileOpen, setMobileOpen] = useState(false);
   const [isSyncing, setIsSyncing] = useState(false);
@@ -231,6 +235,36 @@ export const Navbar: React.FC<NavbarProps> = ({ isConnected, telegramStatus, las
 
             </div>
 
+            {/* Authenticated Trader Profile Chip (Desktop) */}
+            {user && (
+              <div className="hidden sm:flex items-center gap-2 pl-1 border-l border-slate-800/80">
+                <div className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-xl bg-slate-950/90 border border-slate-800 shadow-inner">
+                  <div className="w-6 h-6 rounded-lg bg-gradient-to-tr from-cyan-600 to-blue-500 flex items-center justify-center text-[11px] font-black text-white shrink-0 shadow-sm">
+                    {user.name.charAt(0).toUpperCase()}
+                  </div>
+                  <div className="flex flex-col min-w-0">
+                    <span className="text-[11px] font-bold text-white truncate max-w-[90px] leading-tight">
+                      {user.name}
+                    </span>
+                    <span className="text-[8px] font-mono text-cyan-400 leading-none">
+                      TRADER
+                    </span>
+                  </div>
+                </div>
+
+                <button
+                  type="button"
+                  suppressHydrationWarning
+                  onClick={logout}
+                  title="Sign out of trading terminal"
+                  className="flex items-center justify-center p-2 rounded-xl bg-slate-900 border border-slate-800 hover:border-rose-500/50 hover:bg-rose-950/40 text-slate-400 hover:text-rose-400 transition-colors cursor-pointer shrink-0"
+                  aria-label="Sign out"
+                >
+                  <LogOut className="w-3.5 h-3.5" />
+                </button>
+              </div>
+            )}
+
             {/* Mobile Menu Hamburger Toggle */}
             <button
               type="button"
@@ -271,6 +305,30 @@ export const Navbar: React.FC<NavbarProps> = ({ isConnected, telegramStatus, las
                 );
               })}
             </div>
+
+            {/* Mobile User Profile Card */}
+            {user && (
+              <div className="mb-3 p-3 rounded-xl bg-slate-950/90 border border-slate-800 flex items-center justify-between">
+                <div className="flex items-center gap-2.5 min-w-0">
+                  <div className="w-8 h-8 rounded-xl bg-gradient-to-tr from-cyan-600 to-blue-500 flex items-center justify-center text-xs font-black text-white shrink-0">
+                    {user.name.charAt(0).toUpperCase()}
+                  </div>
+                  <div className="min-w-0">
+                    <p className="text-xs font-bold text-white truncate">{user.name}</p>
+                    <p className="text-[10px] text-slate-400 truncate">{user.email}</p>
+                  </div>
+                </div>
+                <button
+                  type="button"
+                  suppressHydrationWarning
+                  onClick={logout}
+                  className="flex items-center gap-1 text-[11px] font-bold text-rose-400 bg-rose-950/60 border border-rose-800/60 px-2.5 py-1.5 rounded-lg active:scale-95 shrink-0"
+                >
+                  <LogOut className="w-3 h-3" />
+                  <span>Sign Out</span>
+                </button>
+              </div>
+            )}
 
             {/* Mobile Telemetry & Sync Footer */}
             <div className="p-3 rounded-xl bg-slate-950 border border-slate-800/80 flex items-center justify-between text-xs font-mono">

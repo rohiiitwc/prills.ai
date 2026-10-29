@@ -89,3 +89,30 @@ class SyntheticInjectRequest(BaseModel):
     source_username: str = Field(description="quotexofficialvipbot or quotex0o")
     raw_text: str = Field(description="Telegram message content")
     is_test: bool = True
+
+class UserRegisterRequest(BaseModel):
+    name: str = Field(..., min_length=2, max_length=100)
+    email: str = Field(..., min_length=3, max_length=150)
+    password: str = Field(..., min_length=6, max_length=100)
+    age: Optional[int] = Field(None, ge=18, le=120)
+
+class UserLoginRequest(BaseModel):
+    name: Optional[str] = None
+    email: str = Field(..., min_length=3, max_length=150)
+    password: str = Field(..., min_length=1)
+
+class UserResponse(BaseModel):
+    id: int
+    name: str
+    email: str
+    age: Optional[int] = None
+    created_at: datetime
+
+    class Config:
+        from_attributes = True
+
+class AuthResponse(BaseModel):
+    success: bool
+    message: str
+    token: str
+    user: UserResponse

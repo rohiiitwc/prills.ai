@@ -94,6 +94,41 @@ export async function POST(
     // Backend not reachable
   }
 
+  if (pathStr === 'auth/register') {
+    const name = (body?.name || 'Trader').trim();
+    const email = (body?.email || 'trader@prills.ai').trim().toLowerCase();
+    const age = body?.age ? parseInt(body.age, 10) : 21;
+    return NextResponse.json({
+      success: true,
+      message: `Account created successfully! Welcome to PRILLS.AI, ${name}.`,
+      token: `prills_sess_${Date.now()}_${Math.random().toString(36).substring(2)}`,
+      user: {
+        id: Math.floor(Math.random() * 1000) + 1,
+        name,
+        email,
+        age,
+        created_at: new Date().toISOString()
+      }
+    });
+  }
+
+  if (pathStr === 'auth/login') {
+    const email = (body?.email || 'trader@prills.ai').trim().toLowerCase();
+    const name = (body?.name && body.name.trim()) ? body.name.trim() : email.split('@')[0].toUpperCase();
+    return NextResponse.json({
+      success: true,
+      message: `Welcome back to PRILLS.AI Terminal, ${name}!`,
+      token: `prills_sess_${Date.now()}_${Math.random().toString(36).substring(2)}`,
+      user: {
+        id: 1,
+        name,
+        email,
+        age: 21,
+        created_at: new Date().toISOString()
+      }
+    });
+  }
+
   if (pathStr === 'telegram/reconnect') {
     return NextResponse.json({
       success: true,
@@ -115,3 +150,4 @@ export async function POST(
     message: 'Operation completed.'
   });
 }
+
