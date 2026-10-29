@@ -1,6 +1,7 @@
 import asyncio
+import json
 import logging
-from datetime import datetime, timezone
+from datetime import datetime, timezone, timedelta
 from pathlib import Path
 from typing import Optional, Dict, Any, List
 from telethon import TelegramClient, events
@@ -200,6 +201,12 @@ class TelegramService:
             except Exception as le:
                 logger.debug(f"Could not load initial last_sync_at: {le}")
 
+        # 3b. Check and expire any pending signals that already exceeded 5 minutes
+        try:
+            await self.check_pending_timeouts(max_wait_seconds=300)
+        except Exception as to_err:
+            logger.warning(f"Initial pending timeouts check notice: {to_err}")
+
         # 4. Always launch background watchdog task
         if self._watchdog_task is None or self._watchdog_task.done():
             self._watchdog_task = asyncio.create_task(self._connection_watchdog())
@@ -355,6 +362,12 @@ class TelegramService:
             await asyncio.sleep(15)
             cycle += 1
             try:
+                # Continuous check for pending signals exceeding 5 minutes without reported result
+                try:
+                    await self.check_pending_timeouts(max_wait_seconds=300)
+                except Exception as t_err:
+                    logger.debug(f"Watchdog pending timeout check notice: {t_err}")
+
                 # Case 1: Client is not authorized or not connected, but we have credentials + session string
                 if not self.is_authorized or not self.client or not self.client.is_connected():
                     if self.api_id and self.api_hash:
@@ -538,17 +551,17 @@ class TelegramService:
 
     async def reconcile_pending_signals(self):
         """
-        Reconciles any PENDING signals with result messages in the database.
+        Reconciles any PENDING or UNKNOWN signals with result messages in the database.
         Runs after backfill to guarantee that signals ingested out of order are matched.
         """
         async with AsyncSessionLocal() as db:
-            stmt_pending = select(ParsedSignal).where(ParsedSignal.status == "PENDING")
+            stmt_pending = select(ParsedSignal).where(ParsedSignal.status.in_(["PENDING", "UNKNOWN"]))
             res_pending = await db.execute(stmt_pending)
             pending_list = res_pending.scalars().all()
             if not pending_list:
                 return
 
-            logger.info(f"Reconciling {len(pending_list)} pending signals against stored results...")
+            logger.info(f"Reconciling {len(pending_list)} pending/unknown signals against stored results...")
             for sig in pending_list:
                 ref_sig_pub = sig.signal_published_at
                 if ref_sig_pub and ref_sig_pub.tzinfo is not None:
@@ -597,7 +610,125 @@ class TelegramService:
 
                             await db.commit()
                             logger.info(f"Reconciled Signal #{sig.id} ({sig.asset}) to {outcome}")
+
+                            # Broadcast real-time update
+                            signal_dict = {
+                                "id": sig.id,
+                                "source_id": sig.source_id,
+                                "source_name": "Quotex OTC Engine" if sig.market_category == "OTC" else "Global Forex Stream",
+                                "market_category": sig.market_category,
+                                "asset": sig.asset,
+                                "direction": sig.direction,
+                                "direction_display": sig.direction_display,
+                                "entry_time_announced": sig.entry_time_announced,
+                                "entry_time_converted": sig.entry_time_converted,
+                                "expiry_duration": sig.expiry_duration,
+                                "signal_published_at": sig.signal_published_at.isoformat() if sig.signal_published_at else None,
+                                "website_received_at": sig.website_received_at.isoformat() if sig.website_received_at else None,
+                                "is_late": sig.is_late,
+                                "late_by_seconds": sig.late_by_seconds,
+                                "status": sig.status,
+                                "reported_result": sig.reported_result,
+                                "result_reported_at": sig.result_reported_at.isoformat() if sig.result_reported_at else None,
+                                "raw_signal_text": sig.raw_signal_text,
+                                "raw_result_text": sig.raw_result_text,
+                                "review_reason": sig.review_reason,
+                                "is_test_data": sig.is_test_data
+                            }
+                            await ws_manager.broadcast_signal("SIGNAL_UPDATED", signal_dict)
                             break
+
+        # Follow up by checking for any pending signals that have now exceeded 5 minutes
+        try:
+            await self.check_pending_timeouts(max_wait_seconds=300)
+        except Exception as to_err:
+            logger.debug(f"Post-reconcile pending timeouts notice: {to_err}")
+
+    async def check_pending_timeouts(self, max_wait_seconds: int = 300) -> List[int]:
+        """
+        Scans for PENDING signals that have not received a result within max_wait_seconds (5 minutes).
+        Transitions them to status="UNKNOWN" and reported_result="UNKNOWN", logs an audit trail,
+        and broadcasts SIGNAL_UPDATED over WebSocket so the website updates in real-time.
+        """
+        now_utc = datetime.now(timezone.utc)
+        cutoff_naive = (now_utc - timedelta(seconds=max_wait_seconds)).replace(tzinfo=None)
+        timed_out_ids: List[int] = []
+
+        async with AsyncSessionLocal() as db:
+            stmt = (
+                select(ParsedSignal)
+                .where(
+                    and_(
+                        ParsedSignal.status == "PENDING",
+                        ParsedSignal.signal_published_at <= cutoff_naive
+                    )
+                )
+            )
+            res = await db.execute(stmt)
+            pending_signals = res.scalars().all()
+
+            if not pending_signals:
+                return []
+
+            for sig in pending_signals:
+                rec_dt = sig.website_received_at
+                if rec_dt and rec_dt.tzinfo is not None:
+                    rec_dt = rec_dt.replace(tzinfo=None)
+                if rec_dt and rec_dt > cutoff_naive:
+                    # Received less than max_wait_seconds ago by our system
+                    continue
+
+                old_status = sig.status
+                sig.status = "UNKNOWN"
+                sig.reported_result = "UNKNOWN"
+                sig.review_reason = f"No result reported in Telegram within {max_wait_seconds // 60} minutes"
+                sig.updated_at = now_utc
+                timed_out_ids.append(sig.id)
+
+                audit = SignalAuditLog(
+                    signal_id=sig.id,
+                    action="TIMEOUT_UNKNOWN",
+                    details=f"No outcome posted in Telegram within {max_wait_seconds} seconds. Status automatically updated to UNKNOWN.",
+                    old_values=json.dumps({"status": old_status, "reported_result": None}),
+                    new_values=json.dumps({
+                        "status": "UNKNOWN",
+                        "reported_result": "UNKNOWN",
+                        "reason": sig.review_reason
+                    }),
+                    timestamp=now_utc
+                )
+                db.add(audit)
+
+                signal_dict = {
+                    "id": sig.id,
+                    "source_id": sig.source_id,
+                    "source_name": "Quotex OTC Engine" if sig.market_category == "OTC" else "Global Forex Stream",
+                    "market_category": sig.market_category,
+                    "asset": sig.asset,
+                    "direction": sig.direction,
+                    "direction_display": sig.direction_display,
+                    "entry_time_announced": sig.entry_time_announced,
+                    "entry_time_converted": sig.entry_time_converted,
+                    "expiry_duration": sig.expiry_duration,
+                    "signal_published_at": sig.signal_published_at.isoformat() if sig.signal_published_at else None,
+                    "website_received_at": sig.website_received_at.isoformat() if sig.website_received_at else None,
+                    "is_late": sig.is_late,
+                    "late_by_seconds": sig.late_by_seconds,
+                    "status": "UNKNOWN",
+                    "reported_result": "UNKNOWN",
+                    "result_reported_at": None,
+                    "raw_signal_text": sig.raw_signal_text,
+                    "raw_result_text": sig.raw_result_text,
+                    "review_reason": sig.review_reason,
+                    "is_test_data": sig.is_test_data
+                }
+                await ws_manager.broadcast_signal("SIGNAL_UPDATED", signal_dict)
+
+            if timed_out_ids:
+                await db.commit()
+                logger.info(f"Auto-timed out {len(timed_out_ids)} signals to UNKNOWN: {timed_out_ids}")
+
+        return timed_out_ids
 
     async def _handle_telegram_event(self, event, is_edit: bool = False):
         """Processes raw incoming Telegram event from channel with error boundaries."""

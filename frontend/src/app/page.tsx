@@ -323,8 +323,9 @@ export default function HomePage() {
               : (latestData?.pending_signals || []).filter(s => s.market_category === 'LIVE');
 
             const renderResultRow = (sig: Signal, idx: number, prefix: string) => {
-              const isWin = sig.reported_result === 'WIN';
-              const isLoss = sig.reported_result === 'LOSS';
+              const isWin = sig.reported_result === 'WIN' || sig.status === 'WIN';
+              const isLoss = sig.reported_result === 'LOSS' || sig.status === 'LOSS';
+              const isUnknown = sig.reported_result === 'UNKNOWN' || sig.status === 'UNKNOWN';
               const isOtc = sig.market_category === 'OTC';
 
               return (
@@ -361,10 +362,13 @@ export default function HomePage() {
                           ? 'bg-emerald-950/90 text-emerald-400 border-emerald-800/80'
                           : isLoss
                           ? 'bg-rose-950/90 text-rose-400 border-rose-800/80'
+                          : isUnknown
+                          ? 'bg-slate-800/90 text-slate-300 border-slate-700/80'
                           : 'bg-amber-950/90 text-amber-400 border-amber-800/80'
                       }`}
+                      title={isUnknown ? 'No result reported in Telegram within 5 minutes' : undefined}
                     >
-                      {sig.reported_result || 'COMPLETED'}
+                      {sig.reported_result || sig.status || 'COMPLETED'}
                     </span>
                   </div>
                 </div>

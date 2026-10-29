@@ -121,6 +121,7 @@ export const SignalTable: React.FC<SignalTableProps> = ({
             <option value="">All Outcomes</option>
             <option value="WIN">WIN (Reported)</option>
             <option value="LOSS">LOSS (Reported)</option>
+            <option value="UNKNOWN">UNKNOWN (No Result &gt;5m)</option>
             <option value="DRAW">DRAW</option>
             <option value="PENDING">PENDING</option>
             <option value="NEEDS_REVIEW">NEEDS REVIEW</option>
@@ -183,6 +184,7 @@ export const SignalTable: React.FC<SignalTableProps> = ({
                 const isWin = sig.status === 'WIN';
                 const isLoss = sig.status === 'LOSS';
                 const isPending = sig.status === 'PENDING';
+                const isUnknown = sig.status === 'UNKNOWN';
                 const isReview = sig.status === 'NEEDS_REVIEW';
 
                 return (
@@ -252,6 +254,11 @@ export const SignalTable: React.FC<SignalTableProps> = ({
                       {isLoss && (
                         <span className="font-bold text-rose-400 bg-rose-950/80 px-2 py-0.5 rounded border border-rose-800/60">
                           LOSS
+                        </span>
+                      )}
+                      {isUnknown && (
+                        <span className="font-bold text-slate-300 bg-slate-800/80 px-2 py-0.5 rounded border border-slate-700/60" title="No result reported in Telegram within 5 minutes">
+                          UNKNOWN
                         </span>
                       )}
                       {isPending && (

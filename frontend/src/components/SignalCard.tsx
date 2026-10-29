@@ -2,7 +2,7 @@
 
 import React from 'react';
 import { Signal } from '../lib/types';
-import { ArrowUpRight, ArrowDownRight, Clock, AlertTriangle, CheckCircle, XCircle, RefreshCw, FileText } from 'lucide-react';
+import { ArrowUpRight, ArrowDownRight, Clock, AlertTriangle, CheckCircle, XCircle, RefreshCw, FileText, HelpCircle } from 'lucide-react';
 
 interface SignalCardProps {
   signal: Signal | null;
@@ -50,6 +50,7 @@ export const SignalCard: React.FC<SignalCardProps> = ({
   const isWin = signal.status === 'WIN';
   const isLoss = signal.status === 'LOSS';
   const isPending = signal.status === 'PENDING';
+  const isUnknown = signal.status === 'UNKNOWN';
 
   return (
     <div
@@ -58,6 +59,8 @@ export const SignalCard: React.FC<SignalCardProps> = ({
           ? 'border-emerald-500/40 glow-green'
           : isLoss
           ? 'border-rose-500/40 glow-red'
+          : isUnknown
+          ? 'border-slate-700/60'
           : isCall
           ? 'border-emerald-500/30'
           : 'border-rose-500/30'
@@ -70,6 +73,8 @@ export const SignalCard: React.FC<SignalCardProps> = ({
             ? 'bg-gradient-to-r from-emerald-500 to-green-400'
             : isLoss
             ? 'bg-gradient-to-r from-rose-600 to-red-400'
+            : isUnknown
+            ? 'bg-gradient-to-r from-slate-500 to-zinc-400'
             : isCall
             ? 'bg-gradient-to-r from-emerald-500 to-cyan-500'
             : 'bg-gradient-to-r from-rose-500 to-amber-500'
@@ -173,6 +178,11 @@ export const SignalCard: React.FC<SignalCardProps> = ({
           {isLoss && (
             <span className="flex items-center gap-1 text-[11px] sm:text-xs font-bold text-rose-400 bg-rose-950/80 px-2 sm:px-2.5 py-0.5 sm:py-1 rounded-lg border border-rose-800/60">
               <XCircle className="w-3.5 h-3.5" /> LOSS (REPORTED)
+            </span>
+          )}
+          {isUnknown && (
+            <span className="flex items-center gap-1 text-[11px] sm:text-xs font-bold text-slate-300 bg-slate-800/90 px-2 sm:px-2.5 py-0.5 sm:py-1 rounded-lg border border-slate-700/70" title="No result reported in Telegram within 5 minutes">
+              <HelpCircle className="w-3.5 h-3.5 text-slate-400" /> UNKNOWN
             </span>
           )}
           {isPending && (

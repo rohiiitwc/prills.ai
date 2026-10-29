@@ -55,14 +55,17 @@ class DashboardStats(BaseModel):
     today_loss_count: int
     today_draw_count: int
     today_pending_count: int
+    today_unknown_count: Optional[int] = 0
     win_rate_percentage: float
     otc_signals_today: int
     live_signals_today: int
     otc_win_count: Optional[int] = 0
     otc_loss_count: Optional[int] = 0
+    otc_unknown_count: Optional[int] = 0
     otc_win_rate_percentage: Optional[float] = 0.0
     live_win_count: Optional[int] = 0
     live_loss_count: Optional[int] = 0
+    live_unknown_count: Optional[int] = 0
     live_win_rate_percentage: Optional[float] = 0.0
     telegram_connected: bool
     telegram_auth_status: str

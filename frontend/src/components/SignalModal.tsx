@@ -15,6 +15,7 @@ export const SignalModal: React.FC<SignalModalProps> = ({ signal, onClose }) => 
   const isCall = signal.direction === 'CALL';
   const isWin = signal.status === 'WIN';
   const isLoss = signal.status === 'LOSS';
+  const isUnknown = signal.status === 'UNKNOWN';
 
   const formatIST = (isoStr?: string | null) => {
     if (!isoStr) return 'N/A';
@@ -89,6 +90,8 @@ export const SignalModal: React.FC<SignalModalProps> = ({ signal, onClose }) => 
                 <span className="text-emerald-400">WIN</span>
               ) : isLoss ? (
                 <span className="text-rose-400">LOSS</span>
+              ) : isUnknown ? (
+                <span className="text-slate-300" title="No result reported in Telegram within 5 minutes">UNKNOWN</span>
               ) : (
                 <span className="text-slate-400">PENDING</span>
               )}

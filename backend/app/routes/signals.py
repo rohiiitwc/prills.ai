@@ -156,6 +156,12 @@ async def get_signals(
 @router.get("/latest")
 async def get_latest_signals(db: AsyncSession = Depends(get_db)):
     """Returns the latest OTC signal, latest Live market signal, and pending signals."""
+    # Ensure any pending signals past 5 minutes are converted to UNKNOWN before querying
+    try:
+        await telegram_service.check_pending_timeouts(max_wait_seconds=300)
+    except Exception:
+        pass
+
     # Latest valid OTC signal
     stmt_otc = (
         select(ParsedSignal)
@@ -202,10 +208,10 @@ async def get_latest_signals(db: AsyncSession = Depends(get_db)):
                 ParsedSignal.market_category == "OTC",
                 ParsedSignal.reported_result.isnot(None),
                 ParsedSignal.direction.in_(["CALL", "PUT"]),
-                ParsedSignal.status.in_(["WIN", "LOSS", "DRAW"])
+                ParsedSignal.status.in_(["WIN", "LOSS", "DRAW", "UNKNOWN"])
             )
         )
-        .order_by(desc(ParsedSignal.result_reported_at), desc(ParsedSignal.id))
+        .order_by(desc(func.coalesce(ParsedSignal.result_reported_at, ParsedSignal.signal_published_at)), desc(ParsedSignal.id))
         .limit(5)
     )
     res_results_otc = await db.execute(stmt_results_otc)
@@ -221,10 +227,10 @@ async def get_latest_signals(db: AsyncSession = Depends(get_db)):
                 ParsedSignal.market_category == "LIVE",
                 ParsedSignal.reported_result.isnot(None),
                 ParsedSignal.direction.in_(["CALL", "PUT"]),
-                ParsedSignal.status.in_(["WIN", "LOSS", "DRAW"])
+                ParsedSignal.status.in_(["WIN", "LOSS", "DRAW", "UNKNOWN"])
             )
         )
-        .order_by(desc(ParsedSignal.result_reported_at), desc(ParsedSignal.id))
+        .order_by(desc(func.coalesce(ParsedSignal.result_reported_at, ParsedSignal.signal_published_at)), desc(ParsedSignal.id))
         .limit(5)
     )
     res_results_live = await db.execute(stmt_results_live)
@@ -239,10 +245,10 @@ async def get_latest_signals(db: AsyncSession = Depends(get_db)):
             and_(
                 ParsedSignal.reported_result.isnot(None),
                 ParsedSignal.direction.in_(["CALL", "PUT"]),
-                ParsedSignal.status.in_(["WIN", "LOSS", "DRAW"])
+                ParsedSignal.status.in_(["WIN", "LOSS", "DRAW", "UNKNOWN"])
             )
         )
-        .order_by(desc(ParsedSignal.result_reported_at), desc(ParsedSignal.id))
+        .order_by(desc(func.coalesce(ParsedSignal.result_reported_at, ParsedSignal.signal_published_at)), desc(ParsedSignal.id))
         .limit(10)
     )
     res_results = await db.execute(stmt_results)
@@ -324,6 +330,7 @@ async def get_latest_signals(db: AsyncSession = Depends(get_db)):
             "result_reported_at": s.result_reported_at.isoformat() if s.result_reported_at else None,
             "raw_signal_text": s.raw_signal_text,
             "raw_result_text": s.raw_result_text,
+            "review_reason": s.review_reason,
             "is_test_data": s.is_test_data
         }
 
@@ -371,6 +378,10 @@ async def get_dashboard_stats(db: AsyncSession = Depends(get_db)):
     stmt_pending = select(func.count(ParsedSignal.id)).where(and_(stmt_base, ParsedSignal.status == "PENDING"))
     pending_today = (await db.execute(stmt_pending)).scalar() or 0
 
+    # Unknown today (timed out >5m without result)
+    stmt_unknown = select(func.count(ParsedSignal.id)).where(and_(stmt_base, ParsedSignal.status == "UNKNOWN"))
+    unknown_today = (await db.execute(stmt_unknown)).scalar() or 0
+
     # OTC count today
     stmt_otc = select(func.count(ParsedSignal.id)).where(and_(stmt_base, ParsedSignal.market_category == "OTC"))
     otc_today = (await db.execute(stmt_otc)).scalar() or 0
@@ -381,6 +392,9 @@ async def get_dashboard_stats(db: AsyncSession = Depends(get_db)):
 
     stmt_otc_loss = select(func.count(ParsedSignal.id)).where(and_(stmt_base, ParsedSignal.market_category == "OTC", ParsedSignal.status == "LOSS"))
     otc_loss_today = (await db.execute(stmt_otc_loss)).scalar() or 0
+
+    stmt_otc_unknown = select(func.count(ParsedSignal.id)).where(and_(stmt_base, ParsedSignal.market_category == "OTC", ParsedSignal.status == "UNKNOWN"))
+    otc_unknown_today = (await db.execute(stmt_otc_unknown)).scalar() or 0
 
     otc_decided = otc_wins_today + otc_loss_today
     otc_win_rate = round((otc_wins_today / otc_decided * 100), 1) if otc_decided > 0 else 0.0
@@ -395,6 +409,9 @@ async def get_dashboard_stats(db: AsyncSession = Depends(get_db)):
 
     stmt_live_loss = select(func.count(ParsedSignal.id)).where(and_(stmt_base, ParsedSignal.market_category == "LIVE", ParsedSignal.status == "LOSS"))
     live_loss_today = (await db.execute(stmt_live_loss)).scalar() or 0
+
+    stmt_live_unknown = select(func.count(ParsedSignal.id)).where(and_(stmt_base, ParsedSignal.market_category == "LIVE", ParsedSignal.status == "UNKNOWN"))
+    live_unknown_today = (await db.execute(stmt_live_unknown)).scalar() or 0
 
     live_decided = live_wins_today + live_loss_today
     live_win_rate = round((live_wins_today / live_decided * 100), 1) if live_decided > 0 else 0.0
@@ -411,14 +428,17 @@ async def get_dashboard_stats(db: AsyncSession = Depends(get_db)):
         today_loss_count=loss_today,
         today_draw_count=draw_today,
         today_pending_count=pending_today,
+        today_unknown_count=unknown_today,
         win_rate_percentage=win_rate,
         otc_signals_today=otc_today,
         live_signals_today=live_today,
         otc_win_count=otc_wins_today,
         otc_loss_count=otc_loss_today,
+        otc_unknown_count=otc_unknown_today,
         otc_win_rate_percentage=otc_win_rate,
         live_win_count=live_wins_today,
         live_loss_count=live_loss_today,
+        live_unknown_count=live_unknown_today,
         live_win_rate_percentage=live_win_rate,
         telegram_connected=tg_status["is_connected"],
         telegram_auth_status=tg_status["status"],

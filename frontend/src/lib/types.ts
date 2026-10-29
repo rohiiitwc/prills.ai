@@ -13,8 +13,8 @@ export interface Signal {
   website_received_at: string;
   is_late: boolean;
   late_by_seconds: number;
-  status: 'PENDING' | 'WIN' | 'LOSS' | 'DRAW' | 'NEEDS_REVIEW';
-  reported_result: 'WIN' | 'LOSS' | 'DRAW' | null;
+  status: 'PENDING' | 'WIN' | 'LOSS' | 'DRAW' | 'NEEDS_REVIEW' | 'UNKNOWN';
+  reported_result: 'WIN' | 'LOSS' | 'DRAW' | 'UNKNOWN' | null;
   result_reported_at: string | null;
   raw_signal_text: string;
   raw_result_text: string | null;
@@ -40,14 +40,17 @@ export interface DashboardStats {
   today_loss_count: number;
   today_draw_count: number;
   today_pending_count: number;
+  today_unknown_count?: number;
   win_rate_percentage: number;
   otc_signals_today: number;
   live_signals_today: number;
   otc_win_count?: number;
   otc_loss_count?: number;
+  otc_unknown_count?: number;
   otc_win_rate_percentage?: number;
   live_win_count?: number;
   live_loss_count?: number;
+  live_unknown_count?: number;
   live_win_rate_percentage?: number;
   telegram_connected: boolean;
   telegram_auth_status: string;

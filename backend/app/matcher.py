@@ -28,7 +28,7 @@ async def match_result_to_signal(
     if ref_pub_at and ref_pub_at.tzinfo is not None:
         ref_pub_at = ref_pub_at.replace(tzinfo=None)
 
-    # Search for the latest PENDING signal for this asset in the same source channel
+    # Search for the latest PENDING or UNKNOWN signal for this asset in the same source channel
     # published BEFORE or AT the result message timestamp
     stmt = (
         select(ParsedSignal)
@@ -36,7 +36,7 @@ async def match_result_to_signal(
             and_(
                 ParsedSignal.source_id == source.id,
                 ParsedSignal.asset == asset,
-                ParsedSignal.status == "PENDING",
+                ParsedSignal.status.in_(["PENDING", "UNKNOWN"]),
                 ParsedSignal.signal_published_at <= ref_pub_at
             )
         )
@@ -48,14 +48,14 @@ async def match_result_to_signal(
     pending_signal = result.scalar_one_or_none()
 
     if not pending_signal:
-        # Check if there is a pending signal in the same market category (e.g. if source IDs differ)
+        # Check if there is a pending or unknown signal in the same market category (e.g. if source IDs differ)
         stmt_fallback = (
             select(ParsedSignal)
             .where(
                 and_(
                     ParsedSignal.market_category == source.category,
                     ParsedSignal.asset == asset,
-                    ParsedSignal.status == "PENDING",
+                    ParsedSignal.status.in_(["PENDING", "UNKNOWN"]),
                     ParsedSignal.signal_published_at <= ref_pub_at
                 )
             )
@@ -74,7 +74,7 @@ async def match_result_to_signal(
                     and_(
                         ParsedSignal.source_id == source.id,
                         ParsedSignal.asset == asset,
-                        ParsedSignal.status.in_(["LOSS", "PENDING"]),
+                        ParsedSignal.status.in_(["LOSS", "PENDING", "UNKNOWN"]),
                         ParsedSignal.signal_published_at <= ref_pub_at
                     )
                 )
@@ -112,14 +112,14 @@ async def match_result_to_signal(
         )
         db.add(audit)
 
-        # Also resolve any other older pending signals for this same asset preceding this result
+        # Also resolve any other older pending or unknown signals for this same asset preceding this result
         stmt_other_pending = (
             select(ParsedSignal)
             .where(
                 and_(
                     ParsedSignal.source_id == source.id,
                     ParsedSignal.asset == asset,
-                    ParsedSignal.status == "PENDING",
+                    ParsedSignal.status.in_(["PENDING", "UNKNOWN"]),
                     ParsedSignal.id != pending_signal.id,
                     ParsedSignal.signal_published_at <= ref_pub_at
                 )
@@ -166,7 +166,7 @@ async def match_result_to_signal(
             result_reported_at=result_message.published_at,
             raw_signal_text=f"[Result Message without Prior Signal] {raw_result}",
             raw_result_text=raw_result,
-            review_reason=f"Unmatched result: No active PENDING signal found for {asset} in {source.name}"
+            review_reason=f"Unmatched result: No active PENDING or UNKNOWN signal found for {asset} in {source.name}"
         )
         db.add(unmatched_signal)
         await db.commit()
