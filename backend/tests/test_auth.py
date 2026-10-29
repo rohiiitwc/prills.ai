@@ -4,8 +4,8 @@ from sqlalchemy.ext.asyncio import create_async_engine, async_sessionmaker, Asyn
 from fastapi import HTTPException
 
 from backend.app.database import Base
-from backend.app.schemas import UserRegisterRequest, UserLoginRequest
-from backend.app.routes.auth import register_user, login_user, hash_password, verify_password
+from backend.app.schemas import UserRegisterRequest, UserLoginRequest, UserResetPasswordRequest
+from backend.app.routes.auth import register_user, login_user, reset_password, hash_password, verify_password
 
 @pytest_asyncio.fixture
 async def test_db():
@@ -90,4 +90,45 @@ async def test_user_login(test_db: AsyncSession):
     with pytest.raises(HTTPException) as exc:
         await login_user(payload=bad_pw_req, db=test_db)
     assert exc.value.status_code == 401
-    assert "Incorrect password" in exc.value.detail
+    assert "Password incorrect" in exc.value.detail or "Wrong password" in exc.value.detail
+
+@pytest.mark.asyncio
+async def test_user_reset_password(test_db: AsyncSession):
+    # 1. Register user
+    reg = UserRegisterRequest(
+        name="James Cole",
+        age=30,
+        email="james@prills.ai",
+        password="OldPassword123"
+    )
+    await register_user(payload=reg, db=test_db)
+
+    # 2. Reset password
+    reset_req = UserResetPasswordRequest(
+        email="james@prills.ai",
+        new_password="NewSecretPassword456"
+    )
+    res = await reset_password(payload=reset_req, db=test_db)
+    assert res.success is True
+    assert res.user.name == "James Cole"
+
+    # 3. Old password fails
+    bad_login = UserLoginRequest(
+        name="James Cole",
+        email="james@prills.ai",
+        password="OldPassword123"
+    )
+    with pytest.raises(HTTPException) as exc:
+        await login_user(payload=bad_login, db=test_db)
+    assert exc.value.status_code == 401
+    assert "Password incorrect" in exc.value.detail or "Wrong password" in exc.value.detail
+
+    # 4. New password succeeds
+    good_login = UserLoginRequest(
+        name="James Cole",
+        email="james@prills.ai",
+        password="NewSecretPassword456"
+    )
+    login_res = await login_user(payload=good_login, db=test_db)
+    assert login_res.success is True
+    assert login_res.user.email == "james@prills.ai"

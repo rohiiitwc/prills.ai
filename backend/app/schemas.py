@@ -101,6 +101,10 @@ class UserLoginRequest(BaseModel):
     email: str = Field(..., min_length=3, max_length=150)
     password: str = Field(..., min_length=1)
 
+class UserResetPasswordRequest(BaseModel):
+    email: str = Field(..., min_length=3, max_length=150)
+    new_password: str = Field(..., min_length=6, max_length=100)
+
 class UserResponse(BaseModel):
     id: int
     name: str

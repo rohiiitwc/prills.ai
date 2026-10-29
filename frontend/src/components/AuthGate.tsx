@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useAuth } from '../lib/auth';
 import { 
   Radio, 
@@ -15,7 +15,11 @@ import {
   Calendar,
   CheckCircle,
   Layers,
-  Sparkles
+  Sparkles,
+  KeyRound,
+  UserPlus,
+  AlertTriangle,
+  RotateCcw
 } from 'lucide-react';
 
 interface AuthGateProps {
@@ -23,10 +27,10 @@ interface AuthGateProps {
 }
 
 export const AuthGate: React.FC<AuthGateProps> = ({ children }) => {
-  const { user, isAuthenticated, isLoading, login, register } = useAuth();
+  const { user, isAuthenticated, isLoading, isSessionExpired, login, register, resetPassword, clearSessionExpired } = useAuth();
   
-  // Section toggle: 'LOGIN' (Section 1) | 'REGISTER' (Section 2)
-  const [activeTab, setActiveTab] = useState<'LOGIN' | 'REGISTER'>('LOGIN');
+  // Section toggle: 'LOGIN' (Section 1) | 'REGISTER' (Section 2) | 'FORGOT_PASSWORD' (Section 3)
+  const [activeTab, setActiveTab] = useState<'LOGIN' | 'REGISTER' | 'FORGOT_PASSWORD'>('LOGIN');
 
   // Section 1: Sign In form fields
   const [loginName, setLoginName] = useState('');
@@ -44,10 +48,23 @@ export const AuthGate: React.FC<AuthGateProps> = ({ children }) => {
   const [showRegPassword, setShowRegPassword] = useState(false);
   const [agreeTerms, setAgreeTerms] = useState(false);
 
+  // Section 3: Reset / Create New Password form fields
+  const [resetEmail, setResetEmail] = useState('');
+  const [resetNewPassword, setResetNewPassword] = useState('');
+  const [resetConfirmPassword, setResetConfirmPassword] = useState('');
+  const [showResetPassword, setShowResetPassword] = useState(false);
+
   // UI States
   const [submitting, setSubmitting] = useState(false);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
+  const [isPasswordError, setIsPasswordError] = useState(false);
   const [successMessage, setSuccessMessage] = useState<string | null>(null);
+
+  // Clear messages when tab changes
+  useEffect(() => {
+    setErrorMessage(null);
+    setIsPasswordError(false);
+  }, [activeTab]);
 
   // Loading state while checking localStorage session
   if (isLoading) {
@@ -72,6 +89,7 @@ export const AuthGate: React.FC<AuthGateProps> = ({ children }) => {
   const handleLoginSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setErrorMessage(null);
+    setIsPasswordError(false);
     setSuccessMessage(null);
 
     if (!loginEmail.trim() || !loginEmail.includes('@')) {
@@ -87,9 +105,15 @@ export const AuthGate: React.FC<AuthGateProps> = ({ children }) => {
     try {
       const res = await login(loginName, loginEmail, loginPassword);
       if (res.success) {
+        clearSessionExpired();
         setSuccessMessage('Access granted! Unlocking terminal...');
       } else {
-        setErrorMessage(res.error || 'Invalid credentials. Please verify your email and password.');
+        const errText = res.error || 'Password incorrect. Wrong password! If you forgot your password, please create a new password or create a new account again.';
+        setErrorMessage(errText);
+        // Identify password-specific error to highlight recovery options
+        if (errText.toLowerCase().includes('password') || errText.toLowerCase().includes('incorrect') || errText.toLowerCase().includes('wrong')) {
+          setIsPasswordError(true);
+        }
       }
     } catch {
       setErrorMessage('An unexpected error occurred. Please try again.');
@@ -102,6 +126,7 @@ export const AuthGate: React.FC<AuthGateProps> = ({ children }) => {
   const handleRegisterSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setErrorMessage(null);
+    setIsPasswordError(false);
     setSuccessMessage(null);
 
     if (!regName.trim() || regName.trim().length < 2) {
@@ -143,12 +168,51 @@ export const AuthGate: React.FC<AuthGateProps> = ({ children }) => {
     try {
       const res = await register(regName, ageNum, regEmail, regPassword);
       if (res.success) {
+        clearSessionExpired();
         setSuccessMessage('Account created successfully! Entering terminal...');
       } else {
         setErrorMessage(res.error || 'Failed to create account. Email may already be registered.');
       }
     } catch {
       setErrorMessage('Registration error. Please check your details and try again.');
+    } finally {
+      setSubmitting(false);
+    }
+  };
+
+  // Section 3: Reset / Create New Password submission handler
+  const handleResetPasswordSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setErrorMessage(null);
+    setIsPasswordError(false);
+    setSuccessMessage(null);
+
+    if (!resetEmail.trim() || !resetEmail.includes('@')) {
+      setErrorMessage('Please enter a valid email address.');
+      return;
+    }
+
+    if (resetNewPassword.length < 6) {
+      setErrorMessage('New password must contain at least 6 characters.');
+      return;
+    }
+
+    if (resetNewPassword !== resetConfirmPassword) {
+      setErrorMessage('Passwords do not match. Please re-enter identical passwords.');
+      return;
+    }
+
+    setSubmitting(true);
+    try {
+      const res = await resetPassword(resetEmail, resetNewPassword);
+      if (res.success) {
+        clearSessionExpired();
+        setSuccessMessage(res.message || 'Password updated successfully! Entering terminal...');
+      } else {
+        setErrorMessage(res.error || 'Unable to update password. Please create a new account again.');
+      }
+    } catch {
+      setErrorMessage('Failed to reset password. Please try creating a new account again.');
     } finally {
       setSubmitting(false);
     }
@@ -190,6 +254,30 @@ export const AuthGate: React.FC<AuthGateProps> = ({ children }) => {
           </p>
         </div>
 
+        {/* 2-HOUR SECURITY SESSION TIMEOUT BANNER */}
+        {isSessionExpired && (
+          <div className="mb-6 p-4 rounded-2xl bg-gradient-to-r from-amber-950/60 to-orange-950/50 border border-amber-500/60 text-amber-200 shadow-lg shadow-amber-950/40 animate-in fade-in slide-in-from-top-2">
+            <div className="flex items-start gap-3">
+              <div className="p-2 rounded-xl bg-amber-900/60 border border-amber-600/60 text-amber-300 shrink-0">
+                <AlertTriangle className="w-5 h-5 text-amber-400 animate-pulse" />
+              </div>
+              <div className="space-y-1">
+                <div className="flex items-center gap-2">
+                  <h4 className="text-xs font-black uppercase tracking-wider text-amber-300">
+                    2-Hour Security Session Expired
+                  </h4>
+                  <span className="text-[10px] font-mono font-bold bg-amber-900/80 text-amber-200 px-2 py-0.5 rounded-full border border-amber-700/60">
+                    2H TIMEOUT
+                  </span>
+                </div>
+                <p className="text-[11px] text-amber-200/90 leading-relaxed">
+                  For your account security, trading sessions automatically expire every <strong>2 hours</strong>. Please re-enter your credentials below to resume terminal access.
+                </p>
+              </div>
+            </div>
+          </div>
+        )}
+
         {/* Section Navigation Tabs */}
         <div className="grid grid-cols-2 p-1 bg-slate-950/90 rounded-2xl border border-slate-800 mb-6 gap-1 shadow-inner">
           <button
@@ -200,7 +288,7 @@ export const AuthGate: React.FC<AuthGateProps> = ({ children }) => {
               setErrorMessage(null);
             }}
             className={`flex items-center justify-center gap-2 py-2.5 px-4 rounded-xl text-xs sm:text-sm font-bold transition-all cursor-pointer ${
-              activeTab === 'LOGIN'
+              activeTab === 'LOGIN' || activeTab === 'FORGOT_PASSWORD'
                 ? 'bg-gradient-to-r from-cyan-600 to-blue-600 text-white shadow-lg shadow-cyan-900/30 border border-cyan-400/40'
                 : 'text-slate-400 hover:text-white hover:bg-slate-900'
             }`}
@@ -227,8 +315,62 @@ export const AuthGate: React.FC<AuthGateProps> = ({ children }) => {
           </button>
         </div>
 
-        {/* Alert Feedback Messages */}
-        {errorMessage && (
+        {/* DEDICATED WRONG PASSWORD / PASSWORD INCORRECT ALERT BANNER */}
+        {isPasswordError && (
+          <div className="mb-5 p-4 rounded-2xl bg-gradient-to-r from-rose-950/70 to-red-950/50 border border-rose-500/70 text-rose-200 shadow-lg shadow-rose-950/40 animate-in fade-in slide-in-from-top-2">
+            <div className="flex items-start gap-3">
+              <div className="p-2 rounded-xl bg-rose-900/60 border border-rose-600/60 text-rose-300 shrink-0 mt-0.5">
+                <Lock className="w-5 h-5 text-rose-400 animate-pulse" />
+              </div>
+              <div className="space-y-2 flex-1">
+                <div>
+                  <h4 className="text-xs font-black uppercase tracking-wider text-rose-300 flex items-center gap-1.5">
+                    <span>Password Incorrect / Wrong Password</span>
+                  </h4>
+                  <p className="text-[11px] text-rose-200/90 leading-relaxed mt-1">
+                    The password you entered is incorrect. If you forgot your password, please <strong>create a new password</strong> or <strong>create a new account again</strong>.
+                  </p>
+                </div>
+
+                <div className="pt-1 flex flex-wrap items-center gap-2">
+                  <button
+                    type="button"
+                    suppressHydrationWarning
+                    onClick={() => {
+                      setResetEmail(loginEmail);
+                      setActiveTab('FORGOT_PASSWORD');
+                      setErrorMessage(null);
+                      setIsPasswordError(false);
+                    }}
+                    className="px-3 py-1.5 rounded-xl bg-cyan-950 hover:bg-cyan-900 border border-cyan-500/70 text-cyan-300 text-xs font-bold transition-all flex items-center gap-1.5 shadow-sm active:scale-95 cursor-pointer"
+                  >
+                    <KeyRound className="w-3.5 h-3.5 text-cyan-400" />
+                    <span>Create New Password</span>
+                  </button>
+
+                  <button
+                    type="button"
+                    suppressHydrationWarning
+                    onClick={() => {
+                      setRegEmail(loginEmail);
+                      setRegName(loginName);
+                      setActiveTab('REGISTER');
+                      setErrorMessage(null);
+                      setIsPasswordError(false);
+                    }}
+                    className="px-3 py-1.5 rounded-xl bg-slate-900 hover:bg-slate-800 border border-slate-700 text-slate-200 text-xs font-bold transition-all flex items-center gap-1.5 shadow-sm active:scale-95 cursor-pointer"
+                  >
+                    <UserPlus className="w-3.5 h-3.5 text-slate-400" />
+                    <span>Create New Account Again</span>
+                  </button>
+                </div>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* Standard Alert Feedback Messages */}
+        {errorMessage && !isPasswordError && (
           <div className="mb-5 flex items-start gap-2.5 p-3 rounded-xl bg-rose-950/60 border border-rose-800/80 text-rose-300 text-xs animate-in fade-in">
             <AlertCircle className="w-4 h-4 text-rose-400 shrink-0 mt-0.5" />
             <span>{errorMessage}</span>
@@ -287,10 +429,25 @@ export const AuthGate: React.FC<AuthGateProps> = ({ children }) => {
 
             {/* Field 3: Password */}
             <div>
-              <label className="block text-xs font-bold text-slate-300 mb-1.5 flex items-center gap-1.5">
-                <Lock className="w-3.5 h-3.5 text-cyan-400" />
-                <span>Password <span className="text-cyan-400">*</span></span>
-              </label>
+              <div className="flex items-center justify-between mb-1.5">
+                <label className="text-xs font-bold text-slate-300 flex items-center gap-1.5">
+                  <Lock className="w-3.5 h-3.5 text-cyan-400" />
+                  <span>Password <span className="text-cyan-400">*</span></span>
+                </label>
+                <button
+                  type="button"
+                  suppressHydrationWarning
+                  onClick={() => {
+                    setResetEmail(loginEmail);
+                    setActiveTab('FORGOT_PASSWORD');
+                    setErrorMessage(null);
+                    setIsPasswordError(false);
+                  }}
+                  className="text-[11px] text-cyan-400 hover:text-cyan-300 font-semibold transition-colors cursor-pointer"
+                >
+                  Forgot Password?
+                </button>
+              </div>
               <div className="relative">
                 <input
                   type={showLoginPassword ? 'text' : 'password'}
@@ -338,7 +495,7 @@ export const AuthGate: React.FC<AuthGateProps> = ({ children }) => {
               {submitting ? (
                 <>
                   <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
-                  <span>Authenticating...</span>
+                  <span>Authenticating Credentials...</span>
                 </>
               ) : (
                 <>
@@ -349,14 +506,15 @@ export const AuthGate: React.FC<AuthGateProps> = ({ children }) => {
             </button>
 
             {/* Switch Section Prompt */}
-            <div className="text-center pt-3 border-t border-slate-800/80 text-xs text-slate-400">
-              <span>New trader on PRILLS.AI? </span>
+            <div className="text-center pt-3 border-t border-slate-800/80 text-xs text-slate-400 flex flex-col sm:flex-row items-center justify-center gap-2">
+              <span>New trader on PRILLS.AI?</span>
               <button
                 type="button"
                 suppressHydrationWarning
                 onClick={() => {
                   setActiveTab('REGISTER');
                   setErrorMessage(null);
+                  setIsPasswordError(false);
                 }}
                 className="font-bold text-cyan-400 hover:text-cyan-300 underline underline-offset-4 cursor-pointer"
               >
@@ -504,7 +662,7 @@ export const AuthGate: React.FC<AuthGateProps> = ({ children }) => {
               {submitting ? (
                 <>
                   <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
-                  <span>Registering Profile...</span>
+                  <span>Registering Account Profile...</span>
                 </>
               ) : (
                 <>
@@ -523,10 +681,143 @@ export const AuthGate: React.FC<AuthGateProps> = ({ children }) => {
                 onClick={() => {
                   setActiveTab('LOGIN');
                   setErrorMessage(null);
+                  setIsPasswordError(false);
                 }}
                 className="font-bold text-emerald-400 hover:text-emerald-300 underline underline-offset-4 cursor-pointer"
               >
                 Sign In to your terminal here &rarr;
+              </button>
+            </div>
+          </form>
+        )}
+
+        {/* SECTION 3: CREATE NEW PASSWORD (FORGOT PASSWORD FLOW) */}
+        {activeTab === 'FORGOT_PASSWORD' && (
+          <form onSubmit={handleResetPasswordSubmit} className="space-y-4">
+            
+            <div className="p-3.5 rounded-2xl bg-cyan-950/40 border border-cyan-800/50 text-cyan-200 text-xs flex items-start gap-2.5 mb-2">
+              <KeyRound className="w-4 h-4 text-cyan-400 shrink-0 mt-0.5" />
+              <div className="space-y-1">
+                <p className="font-bold text-cyan-300">Set / Create New Password</p>
+                <p className="text-[11px] text-cyan-200/90 leading-relaxed">
+                  Enter your registered email address and your new password below. You can also create a new account again if preferred.
+                </p>
+              </div>
+            </div>
+
+            {/* Field 1: Email Address */}
+            <div>
+              <label className="block text-xs font-bold text-slate-300 mb-1.5 flex items-center gap-1.5">
+                <Mail className="w-3.5 h-3.5 text-cyan-400" />
+                <span>Registered Email Address <span className="text-cyan-400">*</span></span>
+              </label>
+              <input
+                type="email"
+                required
+                suppressHydrationWarning
+                autoComplete="email"
+                value={resetEmail}
+                onChange={(e) => setResetEmail(e.target.value)}
+                placeholder="trader@domain.com"
+                className="w-full px-3.5 py-2.5 rounded-xl bg-slate-950 border border-slate-800 text-sm text-white placeholder-slate-600 focus:outline-none focus:border-cyan-400 focus:ring-1 focus:ring-cyan-400 transition-all"
+              />
+            </div>
+
+            {/* Field 2: New Password */}
+            <div>
+              <label className="block text-xs font-bold text-slate-300 mb-1.5 flex items-center gap-1.5">
+                <Lock className="w-3.5 h-3.5 text-cyan-400" />
+                <span>New Password (min 6 characters) <span className="text-cyan-400">*</span></span>
+              </label>
+              <div className="relative">
+                <input
+                  type={showResetPassword ? 'text' : 'password'}
+                  required
+                  minLength={6}
+                  suppressHydrationWarning
+                  autoComplete="new-password"
+                  value={resetNewPassword}
+                  onChange={(e) => setResetNewPassword(e.target.value)}
+                  placeholder="••••••••"
+                  className="w-full pl-3.5 pr-10 py-2.5 rounded-xl bg-slate-950 border border-slate-800 text-sm text-white placeholder-slate-600 focus:outline-none focus:border-cyan-400 focus:ring-1 focus:ring-cyan-400 transition-all"
+                />
+                <button
+                  type="button"
+                  suppressHydrationWarning
+                  onClick={() => setShowResetPassword(!showResetPassword)}
+                  className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-500 hover:text-slate-300 transition-colors cursor-pointer"
+                >
+                  {showResetPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                </button>
+              </div>
+            </div>
+
+            {/* Field 3: Confirm New Password */}
+            <div>
+              <label className="block text-xs font-bold text-slate-300 mb-1.5 flex items-center gap-1.5">
+                <Lock className="w-3.5 h-3.5 text-cyan-400" />
+                <span>Confirm New Password <span className="text-cyan-400">*</span></span>
+              </label>
+              <input
+                type={showResetPassword ? 'text' : 'password'}
+                required
+                minLength={6}
+                suppressHydrationWarning
+                autoComplete="new-password"
+                value={resetConfirmPassword}
+                onChange={(e) => setResetConfirmPassword(e.target.value)}
+                placeholder="••••••••"
+                className="w-full px-3.5 py-2.5 rounded-xl bg-slate-950 border border-slate-800 text-sm text-white placeholder-slate-600 focus:outline-none focus:border-cyan-400 focus:ring-1 focus:ring-cyan-400 transition-all"
+              />
+            </div>
+
+            {/* Submit Button */}
+            <button
+              type="submit"
+              disabled={submitting}
+              suppressHydrationWarning
+              className="w-full mt-2 flex items-center justify-center gap-2 py-3 px-4 rounded-xl font-bold text-sm bg-gradient-to-r from-cyan-600 via-blue-600 to-indigo-600 hover:from-cyan-500 hover:to-indigo-500 text-white shadow-lg shadow-cyan-900/30 border border-cyan-400/50 hover:border-cyan-300 active:scale-[0.99] transition-all cursor-pointer disabled:opacity-60"
+            >
+              {submitting ? (
+                <>
+                  <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+                  <span>Updating Password...</span>
+                </>
+              ) : (
+                <>
+                  <KeyRound className="w-4 h-4" />
+                  <span>Update &amp; Set New Password</span>
+                </>
+              )}
+            </button>
+
+            {/* Alternate Options */}
+            <div className="pt-3 border-t border-slate-800/80 flex items-center justify-between text-xs text-slate-400">
+              <button
+                type="button"
+                suppressHydrationWarning
+                onClick={() => {
+                  setActiveTab('LOGIN');
+                  setErrorMessage(null);
+                  setIsPasswordError(false);
+                }}
+                className="text-slate-400 hover:text-white transition-colors cursor-pointer flex items-center gap-1 font-medium"
+              >
+                <RotateCcw className="w-3.5 h-3.5" />
+                <span>Back to Sign In</span>
+              </button>
+
+              <button
+                type="button"
+                suppressHydrationWarning
+                onClick={() => {
+                  setActiveTab('REGISTER');
+                  setErrorMessage(null);
+                  setIsPasswordError(false);
+                }}
+                className="text-emerald-400 hover:text-emerald-300 transition-colors font-bold cursor-pointer"
+              >
+                Create New Account Again &rarr;
               </button>
             </div>
           </form>
@@ -550,4 +841,3 @@ export const AuthGate: React.FC<AuthGateProps> = ({ children }) => {
     </div>
   );
 };
-

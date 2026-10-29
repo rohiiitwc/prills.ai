@@ -6,3 +6,4 @@ declare module 'next' {
   const next: any;
   export default next;
 }
+

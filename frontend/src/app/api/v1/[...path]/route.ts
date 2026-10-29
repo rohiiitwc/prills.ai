@@ -8,6 +8,17 @@ const rawBackendUrl =
 
 const BACKEND_URL = rawBackendUrl.replace(/\/+$/, '');
 
+// Simulated user store for serverless/offline fallback
+interface StoredUser {
+  id: number;
+  name: string;
+  email: string;
+  password: string;
+  age: number;
+  createdAt: string;
+}
+const serverlessUserStore = new Map<string, StoredUser>();
+
 export async function GET(
   request: NextRequest,
   { params }: { params: Promise<{ path: string[] }> }
@@ -97,33 +108,120 @@ export async function POST(
   if (pathStr === 'auth/register') {
     const name = (body?.name || 'Trader').trim();
     const email = (body?.email || 'trader@prills.ai').trim().toLowerCase();
+    const password = body?.password || 'Password123';
     const age = body?.age ? parseInt(body.age, 10) : 21;
+
+    const user: StoredUser = {
+      id: Math.floor(Math.random() * 1000) + 1,
+      name,
+      email,
+      password,
+      age,
+      createdAt: new Date().toISOString()
+    };
+    serverlessUserStore.set(email, user);
+
     return NextResponse.json({
       success: true,
       message: `Account created successfully! Welcome to PRILLS.AI, ${name}.`,
       token: `prills_sess_${Date.now()}_${Math.random().toString(36).substring(2)}`,
       user: {
-        id: Math.floor(Math.random() * 1000) + 1,
-        name,
-        email,
-        age,
-        created_at: new Date().toISOString()
+        id: user.id,
+        name: user.name,
+        email: user.email,
+        age: user.age,
+        created_at: user.createdAt
       }
     });
   }
 
   if (pathStr === 'auth/login') {
-    const email = (body?.email || 'trader@prills.ai').trim().toLowerCase();
+    const email = (body?.email || '').trim().toLowerCase();
     const name = (body?.name && body.name.trim()) ? body.name.trim() : email.split('@')[0].toUpperCase();
+    const password = body?.password || '';
+
+    // If user registered in this session, check password
+    const existing = serverlessUserStore.get(email);
+    if (existing) {
+      if (existing.password && password && existing.password !== password) {
+        return NextResponse.json(
+          {
+            success: false,
+            error: 'Password incorrect. Wrong password! If you forgot your password, please create a new password or create a new account again.'
+          },
+          { status: 401 }
+        );
+      }
+      return NextResponse.json({
+        success: true,
+        message: `Welcome back to PRILLS.AI Terminal, ${existing.name}!`,
+        token: `prills_sess_${Date.now()}_${Math.random().toString(36).substring(2)}`,
+        user: {
+          id: existing.id,
+          name: existing.name,
+          email: existing.email,
+          age: existing.age,
+          created_at: existing.createdAt
+        }
+      });
+    }
+
+    // First time login auto-registers into fallback store
+    const newUser: StoredUser = {
+      id: 1,
+      name,
+      email,
+      password,
+      age: 21,
+      createdAt: new Date().toISOString()
+    };
+    serverlessUserStore.set(email, newUser);
+
     return NextResponse.json({
       success: true,
       message: `Welcome back to PRILLS.AI Terminal, ${name}!`,
       token: `prills_sess_${Date.now()}_${Math.random().toString(36).substring(2)}`,
       user: {
-        id: 1,
-        name,
+        id: newUser.id,
+        name: newUser.name,
+        email: newUser.email,
+        age: newUser.age,
+        created_at: newUser.createdAt
+      }
+    });
+  }
+
+  if (pathStr === 'auth/reset-password') {
+    const email = (body?.email || '').trim().toLowerCase();
+    const newPassword = body?.new_password || '';
+
+    if (!email || !newPassword) {
+      return NextResponse.json(
+        { success: false, error: 'Email and new password are required.' },
+        { status: 400 }
+      );
+    }
+
+    const existing = serverlessUserStore.get(email);
+    const userName = existing ? existing.name : email.split('@')[0].toUpperCase();
+    serverlessUserStore.set(email, {
+      id: existing ? existing.id : 1,
+      name: userName,
+      email,
+      password: newPassword,
+      age: existing ? existing.age : 21,
+      createdAt: existing ? existing.createdAt : new Date().toISOString()
+    });
+
+    return NextResponse.json({
+      success: true,
+      message: `Password updated successfully! Welcome back to PRILLS.AI, ${userName}.`,
+      token: `prills_sess_${Date.now()}_${Math.random().toString(36).substring(2)}`,
+      user: {
+        id: existing ? existing.id : 1,
+        name: userName,
         email,
-        age: 21,
+        age: existing ? existing.age : 21,
         created_at: new Date().toISOString()
       }
     });

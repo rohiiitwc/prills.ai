@@ -11,6 +11,7 @@ from backend.app.models import UserAccount, utcnow
 from backend.app.schemas import (
     UserRegisterRequest,
     UserLoginRequest,
+    UserResetPasswordRequest,
     AuthResponse,
     UserResponse
 )
@@ -116,7 +117,7 @@ async def login_user(payload: UserLoginRequest, db: AsyncSession = Depends(get_d
         if not verify_password(user.password_hash, payload.password):
             raise HTTPException(
                 status_code=status.HTTP_401_UNAUTHORIZED,
-                detail="Incorrect password. Please verify your credentials and try again."
+                detail="Password incorrect. Wrong password! If you forgot your password, please create a new password or create a new account again."
             )
         # Update last login
         user.last_login_at = utcnow()
@@ -146,6 +147,46 @@ async def login_user(payload: UserLoginRequest, db: AsyncSession = Depends(get_d
     return AuthResponse(
         success=True,
         message=f"Welcome to PRILLS.AI Trading Terminal, {user.name}!",
+        token=token,
+        user=UserResponse(
+            id=user.id,
+            name=user.name,
+            email=user.email,
+            age=user.age,
+            created_at=user.created_at
+        )
+    )
+
+@router.post("/reset-password", response_model=AuthResponse)
+async def reset_password(payload: UserResetPasswordRequest, db: AsyncSession = Depends(get_db)):
+    """
+    Resets an existing user's password or allows creating a new password if forgotten.
+    """
+    clean_email = payload.email.strip().lower()
+    if not clean_email or "@" not in clean_email:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Please enter a valid email address.")
+    if len(payload.new_password) < 6:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="New password must be at least 6 characters long.")
+
+    stmt = select(UserAccount).where(UserAccount.email == clean_email)
+    res = await db.execute(stmt)
+    user = res.scalar_one_or_none()
+
+    if not user:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Account not found. If you don't have an account, please create a new account again."
+        )
+
+    user.password_hash = hash_password(payload.new_password)
+    user.last_login_at = utcnow()
+    await db.commit()
+    await db.refresh(user)
+
+    token = f"prills_sess_{secrets.token_urlsafe(32)}"
+    return AuthResponse(
+        success=True,
+        message=f"Password updated successfully! Welcome back to PRILLS.AI, {user.name}.",
         token=token,
         user=UserResponse(
             id=user.id,
