@@ -4,7 +4,9 @@
   "private": true,
   "description": "PRILLS.AI Real-Time Telegram Binary Trading Signal Intelligence Website",
   "scripts": {
-    "dev": "npm run dev --prefix frontend",
+    "dev": "concurrently -n \"backend,frontend\" -c \"cyan,magenta\" \"python -m uvicorn backend.app.main:app --host 127.0.0.1 --port 8000 --reload\" \"npm run dev --prefix frontend\"",
+    "dev:frontend": "npm run dev --prefix frontend",
+    "dev:backend": "python -m uvicorn backend.app.main:app --host 127.0.0.1 --port 8000 --reload",
     "build": "npm run build --prefix frontend",
     "start": "npm run start --prefix frontend",
     "frontend": "npm run dev --prefix frontend",
@@ -26,6 +28,7 @@
     "@types/node": "^20",
     "@types/react": "^19",
     "@types/react-dom": "^19",
+    "concurrently": "^10.0.6",
     "postcss": "^8",
     "tailwindcss": "^4",
     "typescript": "^5"

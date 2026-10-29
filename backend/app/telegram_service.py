@@ -169,7 +169,7 @@ class TelegramService:
             pass
 
     async def initialize(self):
-        """Initializes sources in DB, recovers session from all persistent layers, and launches watchdog."""
+        """Initializes sources in DB, recovers session from all persistent layers, loads sync timestamp, and launches watchdog."""
         async with AsyncSessionLocal() as db:
             # 1. Ensure the two exact required sources are in the database
             await self._ensure_sources(db)
@@ -190,11 +190,21 @@ class TelegramService:
                         self.session_string = auth_sess.session_string
                         self._persist_session_to_disk(self.session_string, self.phone_number)
 
-        # 3. Always launch background watchdog task
+            # 3. Retrieve most recent sync timestamp from database so last_sync_at is immediate
+            try:
+                stmt_last = select(func.max(TelegramMessage.received_at))
+                res_last = await db.execute(stmt_last)
+                max_rec = res_last.scalar()
+                if max_rec:
+                    self.last_sync_at = max_rec.replace(tzinfo=timezone.utc) if max_rec.tzinfo is None else max_rec
+            except Exception as le:
+                logger.debug(f"Could not load initial last_sync_at: {le}")
+
+        # 4. Always launch background watchdog task
         if self._watchdog_task is None or self._watchdog_task.done():
             self._watchdog_task = asyncio.create_task(self._connection_watchdog())
 
-        # 4. Attempt Telegram connection if credentials exist
+        # 5. Attempt Telegram connection if credentials exist
         if self.api_id and self.api_hash:
             await self.start_client()
         else:
@@ -282,6 +292,17 @@ class TelegramService:
                     if saved:
                         self.session_string = saved
                         self._persist_session_to_disk(saved, self.phone_number)
+
+                    # Update sources connection_status in database to CONNECTED
+                    try:
+                        async with AsyncSessionLocal() as db:
+                            for src in self.channel_map.values():
+                                db_src = await db.get(TelegramSource, src.id)
+                                if db_src:
+                                    db_src.connection_status = "CONNECTED"
+                            await db.commit()
+                    except Exception as src_err:
+                        logger.warning(f"Failed to update source status in DB: {src_err}")
 
                     await self._register_channel_listeners()
                     await self._broadcast_current_status()
@@ -381,12 +402,49 @@ class TelegramService:
                     entity = await self.client.get_entity(username)
                     latest_msgs = await self.client.get_messages(entity, limit=1)
                     if latest_msgs and latest_msgs[0].id > max_db_id:
-                        logger.info(f"Message gap detected for @{username} (DB: {max_db_id}, Telegram: {latest_msgs[0].id}). Syncing...")
                         gap = latest_msgs[0].id - max_db_id
-                        await self._backfill_recent_messages(limit=min(gap + 30, 300))
-                        break
+                        logger.info(f"Message gap detected for @{username} (DB: {max_db_id}, Telegram: {latest_msgs[0].id}, gap: {gap}). Syncing...")
+                        await self._backfill_channel(username, source, limit=min(gap + 15, 300))
         except Exception as e:
             logger.debug(f"Gap sync check notice: {e}")
+
+    def _find_source_for_event(self, event, chat_id=None, event_chat_id=None, chat_username=""):
+        candidates = [event_chat_id, chat_id]
+        if hasattr(event, "chat_id"):
+            candidates.append(event.chat_id)
+        if hasattr(event, "message") and hasattr(event.message, "peer_id"):
+            peer = event.message.peer_id
+            if hasattr(peer, "channel_id"):
+                candidates.append(peer.channel_id)
+
+        for cid in candidates:
+            if cid is None:
+                continue
+            if cid in self.entity_id_map:
+                return self.entity_id_map[cid]
+            if str(cid) in self.entity_id_map:
+                return self.entity_id_map[str(cid)]
+            try:
+                icid = int(cid)
+                if icid in self.entity_id_map:
+                    return self.entity_id_map[icid]
+                if abs(icid) in self.entity_id_map:
+                    return self.entity_id_map[abs(icid)]
+                s = str(icid)
+                if s.startswith("-100"):
+                    short_id = int(s[4:])
+                    if short_id in self.entity_id_map:
+                        return self.entity_id_map[short_id]
+                elif icid > 0:
+                    p_id = int(f"-100{icid}")
+                    if p_id in self.entity_id_map:
+                        return self.entity_id_map[p_id]
+            except Exception:
+                pass
+
+        if chat_username and chat_username.lower() in self.channel_map:
+            return self.channel_map[chat_username.lower()]
+        return None
 
     async def _register_channel_listeners(self):
         """Subscribes to events from both configured Telegram channels and backfills recent messages."""
@@ -402,9 +460,18 @@ class TelegramService:
                 entity = await self.client.get_entity(username)
                 self.resolved_entities.append(entity)
                 self.entity_id_map[entity.id] = source
+                self.entity_id_map[abs(entity.id)] = source
+                self.entity_id_map[str(entity.id)] = source
                 peer_id = await self.client.get_peer_id(entity)
                 self.entity_id_map[peer_id] = source
+                self.entity_id_map[abs(peer_id)] = source
+                self.entity_id_map[str(peer_id)] = source
                 logger.info(f"Resolved channel @{username} -> entity_id={entity.id}, peer_id={peer_id}")
+                try:
+                    from telethon.tl.functions.channels import JoinChannelRequest
+                    await self.client(JoinChannelRequest(entity))
+                except Exception:
+                    pass
             except Exception as e:
                 logger.error(f"Error resolving channel entity for @{username}: {e}")
 
@@ -424,6 +491,34 @@ class TelegramService:
         # Asynchronously backfill recent channel messages so current day signals appear immediately
         asyncio.create_task(self._backfill_recent_messages(limit=200))
 
+    async def _backfill_channel(self, username: str, source: TelegramSource, limit: int = 200):
+        """Backfills recent messages for a single channel in chronological order."""
+        if not self.client or not self.is_authorized:
+            return
+        try:
+            logger.info(f"Backfilling up to {limit} recent messages from @{username}...")
+            entity = await self.client.get_entity(username)
+            messages = await self.client.get_messages(entity, limit=limit)
+            sorted_messages = sorted(messages, key=lambda m: m.id)
+            for msg in sorted_messages:
+                if not msg or not msg.message:
+                    continue
+                try:
+                    pub_at = msg.date.replace(tzinfo=timezone.utc) if msg.date else datetime.now(timezone.utc)
+                    await self.process_incoming_message(
+                        source=source,
+                        message_id=msg.id,
+                        raw_text=msg.message,
+                        published_at=pub_at,
+                        is_edit=False,
+                        is_test_data=False
+                    )
+                except Exception as msg_err:
+                    logger.warning(f"Skipping backfill message #{msg.id} due to: {msg_err}")
+            logger.info(f"Completed backfill from @{username}.")
+        except Exception as e:
+            logger.error(f"Error backfilling from channel @{username}: {e}")
+
     async def _backfill_recent_messages(self, limit: int = 200):
         """
         Backfills recent messages from both channels chronologically (oldest to newest by message ID).
@@ -433,30 +528,7 @@ class TelegramService:
             return
 
         for username, source in self.channel_map.items():
-            try:
-                logger.info(f"Backfilling up to {limit} recent messages from @{username}...")
-                entity = await self.client.get_entity(username)
-                messages = await self.client.get_messages(entity, limit=limit)
-                # Sort strictly by message ID ascending so signals always precede their results
-                sorted_messages = sorted(messages, key=lambda m: m.id)
-                for msg in sorted_messages:
-                    if not msg or not msg.message:
-                        continue
-                    try:
-                        pub_at = msg.date.replace(tzinfo=timezone.utc) if msg.date else datetime.now(timezone.utc)
-                        await self.process_incoming_message(
-                            source=source,
-                            message_id=msg.id,
-                            raw_text=msg.message,
-                            published_at=pub_at,
-                            is_edit=False,
-                            is_test_data=False
-                        )
-                    except Exception as msg_err:
-                        logger.warning(f"Skipping backfill message #{msg.id} due to: {msg_err}")
-                logger.info(f"Completed backfill from @{username}.")
-            except Exception as e:
-                logger.error(f"Error backfilling from channel @{username}: {e}")
+            await self._backfill_channel(username, source, limit=limit)
 
         # Post-backfill reconciliation of any pending signals with stored results
         try:
@@ -528,28 +600,32 @@ class TelegramService:
                             break
 
     async def _handle_telegram_event(self, event, is_edit: bool = False):
-        """Processes raw incoming Telegram event from channel."""
+        """Processes raw incoming Telegram event from channel with error boundaries."""
         try:
-            chat = await event.get_chat()
-            chat_id = getattr(chat, "id", None)
-            chat_username = (getattr(chat, "username", None) or "").lower()
             event_chat_id = getattr(event, "chat_id", None)
+            chat_id = None
+            chat_username = ""
+            try:
+                chat = await event.get_chat()
+                chat_id = getattr(chat, "id", None)
+                chat_username = (getattr(chat, "username", None) or "").lower()
+            except Exception:
+                pass
 
-            source = None
-            if event_chat_id is not None and event_chat_id in self.entity_id_map:
-                source = self.entity_id_map[event_chat_id]
-            elif chat_id is not None and chat_id in self.entity_id_map:
-                source = self.entity_id_map[chat_id]
-            elif chat_username and chat_username in self.channel_map:
-                source = self.channel_map[chat_username]
+            source = self._find_source_for_event(event, chat_id, event_chat_id, chat_username)
 
             if not source:
                 logger.warning(f"Unmapped Telegram event: chat_id={chat_id}, event_chat_id={event_chat_id}, username={chat_username}")
                 return
 
-            raw_text = event.message.message or ""
-            published_at = event.message.date.replace(tzinfo=timezone.utc) if event.message.date else datetime.now(timezone.utc)
-            message_id = event.message.id
+            raw_text = (getattr(event.message, "message", None) or "") if hasattr(event, "message") else ""
+            if not raw_text:
+                return
+
+            published_at = event.message.date.replace(tzinfo=timezone.utc) if (hasattr(event, "message") and getattr(event.message, "date", None)) else datetime.now(timezone.utc)
+            message_id = event.message.id if hasattr(event, "message") else 0
+            if not message_id:
+                return
 
             await self.process_incoming_message(
                 source=source,

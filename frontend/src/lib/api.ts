@@ -1,22 +1,35 @@
 import { DashboardStats, LatestSignalsData, PaginatedSignals, Signal, TelegramStatus } from './types';
 
 export function getApiBaseUrl(): string {
+  const envApi = process.env.NEXT_PUBLIC_API_URL?.trim();
+  if (envApi) {
+    return envApi.replace(/\/+$/, '');
+  }
   if (typeof window !== 'undefined') {
     const host = window.location.hostname || 'localhost';
-    const targetHost = host === 'localhost' ? '127.0.0.1' : host;
-    return `http://${targetHost}:8000/api/v1`;
+    if (host === 'localhost' || host === '127.0.0.1') {
+      return 'http://127.0.0.1:8000/api/v1';
+    }
+    // Remote or production: use relative API path proxied by Next.js rewrites
+    return `${window.location.protocol}//${window.location.host}/api/v1`;
   }
-  return process.env.NEXT_PUBLIC_API_URL || 'http://127.0.0.1:8000/api/v1';
+  return 'http://127.0.0.1:8000/api/v1';
 }
 
 export function getWsBaseUrl(): string {
+  const envWs = process.env.NEXT_PUBLIC_WS_URL?.trim();
+  if (envWs) {
+    return envWs.replace(/\/+$/, '');
+  }
   if (typeof window !== 'undefined') {
     const host = window.location.hostname || 'localhost';
-    const targetHost = host === 'localhost' ? '127.0.0.1' : host;
+    if (host === 'localhost' || host === '127.0.0.1') {
+      return 'ws://127.0.0.1:8000/ws';
+    }
     const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
-    return `${protocol}//${targetHost}:8000/ws`;
+    return `${protocol}//${window.location.host}/ws`;
   }
-  return process.env.NEXT_PUBLIC_WS_URL || 'ws://127.0.0.1:8000/ws';
+  return 'ws://127.0.0.1:8000/ws';
 }
 
 export const API_BASE_URL = 'http://127.0.0.1:8000/api/v1';
