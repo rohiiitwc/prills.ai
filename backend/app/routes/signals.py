@@ -38,23 +38,23 @@ async def get_signals(
     """Retrieves paginated, filtered signals from the permanent database."""
     filters = []
 
-    if market:
+    if market and isinstance(market, str):
         filters.append(ParsedSignal.market_category == market.upper())
     
-    if source_username:
+    if source_username and isinstance(source_username, str):
         # Join source
         filters.append(TelegramSource.username == source_username.lower())
 
-    if asset:
+    if asset and isinstance(asset, str):
         filters.append(ParsedSignal.asset.ilike(f"%{asset.strip()}%"))
 
-    if direction:
+    if direction and isinstance(direction, str):
         filters.append(ParsedSignal.direction == direction.upper())
 
-    if status:
+    if status and isinstance(status, str):
         filters.append(ParsedSignal.status == status.upper())
 
-    if search:
+    if search and isinstance(search, str):
         search_term = f"%{search.strip()}%"
         filters.append(
             or_(
@@ -64,14 +64,14 @@ async def get_signals(
             )
         )
 
-    if start_date:
+    if start_date and isinstance(start_date, str):
         try:
             start_dt = datetime.strptime(start_date, "%Y-%m-%d").replace(tzinfo=timezone.utc)
             filters.append(ParsedSignal.signal_published_at >= start_dt)
         except ValueError:
             pass
 
-    if end_date:
+    if end_date and isinstance(end_date, str):
         try:
             end_dt = datetime.strptime(end_date, "%Y-%m-%d").replace(tzinfo=timezone.utc) + timedelta(days=1)
             filters.append(ParsedSignal.signal_published_at < end_dt)
