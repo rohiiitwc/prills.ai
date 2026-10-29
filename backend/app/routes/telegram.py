@@ -29,11 +29,23 @@ async def get_telegram_status():
     """Returns Telegram connection and channel synchronization status without any credentials."""
     return telegram_service.get_status()
 
+@router.post("/reconnect")
+async def trigger_telegram_reconnect():
+    """Forces an immediate reconnection of the Telegram client using stored session."""
+    res = await telegram_service.reconnect()
+    return res
+
 @router.post("/sync")
 async def trigger_telegram_sync():
     """Triggers an on-demand backfill and synchronization from both channels."""
     if not telegram_service.client or not telegram_service.is_authorized:
-        raise HTTPException(status_code=400, detail="Telegram client is not authorized or connected")
+        # Attempt auto-reconnect if session exists
+        if telegram_service.session_string or telegram_service._load_stored_session():
+            rec = await telegram_service.reconnect()
+            if not rec.get("success"):
+                raise HTTPException(status_code=400, detail="Telegram client is not authorized or connected")
+        else:
+            raise HTTPException(status_code=400, detail="Telegram client is not authorized or connected")
     import asyncio
     asyncio.create_task(telegram_service._backfill_recent_messages(limit=300))
     return {"status": "SYNC_STARTED", "message": "Backfill and reconciliation initiated"}

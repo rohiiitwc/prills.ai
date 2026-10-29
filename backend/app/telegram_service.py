@@ -1,6 +1,7 @@
 import asyncio
 import logging
 from datetime import datetime, timezone
+from pathlib import Path
 from typing import Optional, Dict, Any, List
 from telethon import TelegramClient, events
 from telethon.sessions import StringSession
@@ -12,7 +13,7 @@ from telethon.errors import (
     PasswordHashInvalidError
 )
 from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy import select, and_
+from sqlalchemy import select, and_, func
 
 from backend.app.config import settings
 from backend.app.database import AsyncSessionLocal
@@ -44,33 +45,163 @@ class TelegramService:
         self.entity_id_map: Dict[int, TelegramSource] = {} # entity_id or peer_id -> TelegramSource
         self.resolved_entities: list = []
         self._listener_task: Optional[asyncio.Task] = None
+        self._watchdog_task: Optional[asyncio.Task] = None
+        self._listeners_registered: bool = False
+        self._connect_lock = asyncio.Lock()
+
+    def _get_project_root(self) -> Path:
+        return Path(__file__).resolve().parent.parent.parent
+
+    def _load_stored_session(self) -> Optional[str]:
+        """
+        Loads the Telegram session string from multiple persistent layers:
+        1. settings.TELEGRAM_SESSION_STRING / self.session_string
+        2. Session string files (data/telegram_session.string, backend/data/telegram_session.string)
+        3. Direct SQLite fallback inspection if DB connection isn't ready
+        """
+        if self.session_string and len(self.session_string.strip()) > 20:
+            return self.session_string.strip()
+        if settings.TELEGRAM_SESSION_STRING and len(settings.TELEGRAM_SESSION_STRING.strip()) > 20:
+            return settings.TELEGRAM_SESSION_STRING.strip()
+
+        root = self._get_project_root()
+        candidate_paths = [
+            root / "data" / "telegram_session.string",
+            root / "backend" / "data" / "telegram_session.string",
+            Path("./data/telegram_session.string"),
+            Path("./backend/data/telegram_session.string"),
+        ]
+        for cp in candidate_paths:
+            try:
+                if cp.exists():
+                    content = cp.read_text(encoding="utf-8").strip()
+                    if len(content) > 20:
+                        logger.info(f"Loaded Telegram session from file: {cp}")
+                        return content
+            except Exception as fe:
+                logger.debug(f"Could not read session file {cp}: {fe}")
+
+        db_candidates = [
+            root / "data" / "signals.db",
+            root / "backend" / "data" / "signals.db",
+            Path("./data/signals.db"),
+            Path("./backend/data/signals.db"),
+        ]
+        import sqlite3
+        for db_file in db_candidates:
+            if db_file.exists():
+                try:
+                    conn = sqlite3.connect(str(db_file))
+                    c = conn.cursor()
+                    tables = [r[0] for r in c.execute("SELECT name FROM sqlite_master WHERE type='table'").fetchall()]
+                    if "telegram_auth_sessions" in tables:
+                        row = c.execute(
+                            "SELECT session_string FROM telegram_auth_sessions WHERE auth_state='AUTHENTICATED' AND session_string IS NOT NULL ORDER BY id DESC LIMIT 1"
+                        ).fetchone()
+                        if row and row[0] and len(row[0].strip()) > 20:
+                            conn.close()
+                            logger.info(f"Loaded Telegram session from SQLite file: {db_file}")
+                            return row[0].strip()
+                    conn.close()
+                except Exception:
+                    pass
+
+        return None
+
+    def _persist_session_to_disk(self, session_str: str, phone: Optional[str] = None):
+        """Persists session string to both .env files and persistent files on disk."""
+        if not session_str or len(session_str.strip()) < 20:
+            return
+        root = self._get_project_root()
+        clean_sess = session_str.strip()
+        
+        # Save to persistent text files
+        for parent_dir in [root / "data", root / "backend" / "data"]:
+            try:
+                parent_dir.mkdir(parents=True, exist_ok=True)
+                sess_file = parent_dir / "telegram_session.string"
+                sess_file.write_text(clean_sess, encoding="utf-8")
+            except Exception as e:
+                logger.warning(f"Failed to write session file to {parent_dir}: {e}")
+
+        # Update .env and backend/.env
+        for env_file in [root / ".env", root / "backend" / ".env"]:
+            try:
+                if env_file.exists():
+                    lines = env_file.read_text(encoding="utf-8").splitlines()
+                    found = False
+                    new_lines = []
+                    for line in lines:
+                        if line.startswith("TELEGRAM_SESSION_STRING="):
+                            new_lines.append(f"TELEGRAM_SESSION_STRING={clean_sess}")
+                            found = True
+                        elif phone and line.startswith("TELEGRAM_PHONE_NUMBER=") and not line.split("=", 1)[1].strip():
+                            new_lines.append(f"TELEGRAM_PHONE_NUMBER={phone.strip()}")
+                        else:
+                            new_lines.append(line)
+                    if not found:
+                        new_lines.append(f"TELEGRAM_SESSION_STRING={clean_sess}")
+                    env_file.write_text("\n".join(new_lines) + "\n", encoding="utf-8")
+            except Exception as e:
+                logger.warning(f"Failed to update {env_file}: {e}")
+
+    async def _persist_session(self, session_str: str, phone: Optional[str] = None):
+        """Persists session to memory, disk, env, and database."""
+        self.session_string = session_str
+        self._persist_session_to_disk(session_str, phone)
+        try:
+            async with AsyncSessionLocal() as db:
+                sess_record = TelegramAuthSession(
+                    phone_number=phone or self.phone_number,
+                    auth_state="AUTHENTICATED",
+                    session_string=session_str
+                )
+                db.add(sess_record)
+                await db.commit()
+        except Exception as e:
+            logger.warning(f"Failed to save session to DB: {e}")
+
+    async def _broadcast_current_status(self):
+        """Broadcasts current connection and synchronization status to all connected WebSockets."""
+        try:
+            await ws_manager.broadcast_status(self.get_status())
+        except Exception:
+            pass
 
     async def initialize(self):
-        """Initializes sources in DB and attempts Telegram connection if credentials exist."""
+        """Initializes sources in DB, recovers session from all persistent layers, and launches watchdog."""
         async with AsyncSessionLocal() as db:
             # 1. Ensure the two exact required sources are in the database
             await self._ensure_sources(db)
             
-            # 2. Check stored session in DB if not in settings
+            # 2. Check stored session across layers if not set
             if not self.session_string:
-                stmt = select(TelegramAuthSession).where(
-                    and_(
-                        TelegramAuthSession.auth_state == "AUTHENTICATED",
-                        TelegramAuthSession.session_string.isnot(None)
-                    )
-                ).order_by(TelegramAuthSession.id.desc()).limit(1)
-                res = await db.execute(stmt)
-                auth_sess = res.scalar_one_or_none()
-                if auth_sess and auth_sess.session_string:
-                    self.session_string = auth_sess.session_string
+                self.session_string = self._load_stored_session()
+                if not self.session_string:
+                    stmt = select(TelegramAuthSession).where(
+                        and_(
+                            TelegramAuthSession.auth_state == "AUTHENTICATED",
+                            TelegramAuthSession.session_string.isnot(None)
+                        )
+                    ).order_by(TelegramAuthSession.id.desc()).limit(1)
+                    res = await db.execute(stmt)
+                    auth_sess = res.scalar_one_or_none()
+                    if auth_sess and auth_sess.session_string:
+                        self.session_string = auth_sess.session_string
+                        self._persist_session_to_disk(self.session_string, self.phone_number)
 
-        # 3. Check if API credentials are provided
+        # 3. Always launch background watchdog task
+        if self._watchdog_task is None or self._watchdog_task.done():
+            self._watchdog_task = asyncio.create_task(self._connection_watchdog())
+
+        # 4. Attempt Telegram connection if credentials exist
         if self.api_id and self.api_hash:
             await self.start_client()
         else:
             self.connection_status = "AUTH_REQUIRED"
             self.error_message = "Telegram API ID and API Hash required. Please configure in settings or Admin UI."
             logger.info("Telegram API credentials not configured yet.")
+            await self._broadcast_current_status()
 
     async def _ensure_sources(self, db: AsyncSession):
         """Ensures the two required channels exist in the database with exact links and names."""
@@ -111,66 +242,130 @@ class TelegramService:
 
     async def start_client(self):
         """Starts Telethon client with MTProto and infinite reconnection."""
-        try:
-            self.connection_status = "CONNECTING"
-            self.error_message = None
+        async with self._connect_lock:
+            try:
+                self.connection_status = "CONNECTING"
+                self.error_message = None
+                await self._broadcast_current_status()
 
-            session = StringSession(self.session_string or "")
-            self.client = TelegramClient(
-                session,
-                self.api_id,
-                self.api_hash,
-                connection_retries=None,  # Infinite retry attempts
-                retry_delay=5,
-                auto_reconnect=True,
-                flood_sleep_threshold=60
-            )
-            
-            await self.client.connect()
-            self.is_connected = True
-            
-            if await self.client.is_user_authorized():
-                self.is_authorized = True
-                self.connection_status = "CONNECTED"
-                logger.info("Telegram client successfully authenticated!")
-                await self._register_channel_listeners()
-            else:
-                self.is_authorized = False
-                self.connection_status = "AUTH_REQUIRED"
-                logger.info("Telegram client connected but user authorization is needed.")
+                if self.client:
+                    try:
+                        await self.client.disconnect()
+                    except Exception:
+                        pass
+                    self._listeners_registered = False
+
+                if not self.session_string:
+                    self.session_string = self._load_stored_session()
+
+                session = StringSession(self.session_string or "")
+                self.client = TelegramClient(
+                    session,
+                    self.api_id,
+                    self.api_hash,
+                    connection_retries=5,
+                    retry_delay=3,
+                    auto_reconnect=True,
+                    flood_sleep_threshold=60
+                )
                 
-        except Exception as e:
-            self.connection_status = "ERROR"
-            self.error_message = str(e)
-            logger.error(f"Error starting Telegram client: {e}")
+                await self.client.connect()
+                self.is_connected = True
+                
+                if await self.client.is_user_authorized():
+                    self.is_authorized = True
+                    self.connection_status = "CONNECTED"
+                    self.error_message = None
+                    logger.info("Telegram client successfully authenticated!")
+                    
+                    saved = self.client.session.save()
+                    if saved:
+                        self.session_string = saved
+                        self._persist_session_to_disk(saved, self.phone_number)
+
+                    await self._register_channel_listeners()
+                    await self._broadcast_current_status()
+                else:
+                    self.is_authorized = False
+                    self.connection_status = "AUTH_REQUIRED"
+                    logger.info("Telegram client connected but user authorization is needed.")
+                    await self._broadcast_current_status()
+                    
+            except Exception as e:
+                self.connection_status = "ERROR"
+                self.error_message = str(e)
+                self.is_connected = False
+                logger.error(f"Error starting Telegram client: {e}")
+                await self._broadcast_current_status()
+
+    async def reconnect(self) -> Dict[str, Any]:
+        """Manually forces a clean re-initialization and reconnection of the Telegram client."""
+        logger.info("Manual/API Telegram reconnection triggered.")
+        self.connection_status = "CONNECTING"
+        self.error_message = None
+        await self._broadcast_current_status()
+
+        if self.client:
+            try:
+                await self.client.disconnect()
+            except Exception:
+                pass
+            self._listeners_registered = False
+
+        self.session_string = self._load_stored_session()
+        await self.start_client()
+        await self._broadcast_current_status()
+
+        if self.is_connected and self.is_authorized:
+            asyncio.create_task(self._backfill_recent_messages(limit=200))
+            return {"success": True, "status": "CONNECTED", "message": "Telegram successfully connected and synchronizing."}
+        else:
+            return {
+                "success": False,
+                "status": self.connection_status,
+                "error": self.error_message or "Could not connect to Telegram. Please check credentials or network."
+            }
 
     async def _connection_watchdog(self):
-        """Monitors Telegram connection continuously and auto-recovers after network drops."""
+        """Monitors Telegram connection continuously, recovers after network drops, and auto-reconnects."""
         cycle = 0
+        logger.info("Telegram connection watchdog active.")
         while True:
-            await asyncio.sleep(20)
+            await asyncio.sleep(15)
             cycle += 1
             try:
-                if self.client and self.is_authorized:
-                    if not self.client.is_connected():
-                        logger.warning("Telegram connection lost. Attempting auto-reconnect...")
+                # Case 1: Client is not authorized or not connected, but we have credentials + session string
+                if not self.is_authorized or not self.client or not self.client.is_connected():
+                    if self.api_id and self.api_hash:
+                        if not self.session_string:
+                            self.session_string = self._load_stored_session()
+                        if self.session_string:
+                            logger.info("Watchdog: Attempting auto-reconnect with stored session...")
+                            await self.start_client()
+                else:
+                    # Case 2: Client is supposed to be connected & authorized
+                    try:
+                        if not self.client.is_connected():
+                            raise ConnectionError("Client is_connected() is False")
+                        # Periodic ping every 60s
+                        if cycle % 4 == 0:
+                            await asyncio.wait_for(self.client.get_me(), timeout=10.0)
+                    except Exception as live_err:
+                        logger.warning(f"Watchdog detected Telegram disconnect/timeout: {live_err}. Reconnecting...")
                         self.connection_status = "CONNECTING"
                         self.is_connected = False
-                        await self.client.connect()
-                        if await self.client.is_user_authorized():
-                            self.connection_status = "CONNECTED"
-                            self.is_connected = True
-                            logger.info("Telegram connection successfully re-established by watchdog.")
-                            # Catch up on any messages missed during disconnect
-                            asyncio.create_task(self._backfill_recent_messages(limit=300))
-                    else:
-                        if self.connection_status != "CONNECTED":
-                            self.connection_status = "CONNECTED"
-                            self.is_connected = True
+                        await self._broadcast_current_status()
+                        await asyncio.sleep(2)
+                        await self.start_client()
 
-                        # Periodic sync check every 60s to catch messages if laptop was sleeping
-                        if cycle % 3 == 0:
-                            asyncio.create_task(self.check_and_sync_gap())
+                    # Re-verify listeners if needed
+                    if not self._listeners_registered:
+                        await self._register_channel_listeners()
+
+                    # Periodic sync check every 45s
+                    if self.is_connected and self.is_authorized and cycle % 3 == 0:
+                        asyncio.create_task(self.check_and_sync_gap())
+
             except Exception as e:
                 logger.warning(f"Connection watchdog error: {e}")
 
@@ -198,6 +393,9 @@ class TelegramService:
         if not self.client or not self.is_authorized:
             return
 
+        if self._listeners_registered:
+            return
+
         self.resolved_entities = []
         for username, source in self.channel_map.items():
             try:
@@ -221,8 +419,7 @@ class TelegramService:
         async def edit_message_handler(event):
             await self._handle_telegram_event(event, is_edit=True)
 
-        # Start the connection watchdog task
-        asyncio.create_task(self._connection_watchdog())
+        self._listeners_registered = True
 
         # Asynchronously backfill recent channel messages so current day signals appear immediately
         asyncio.create_task(self._backfill_recent_messages(limit=200))
@@ -697,17 +894,11 @@ class TelegramService:
             saved_session = self.client.session.save()
             self.session_string = saved_session
 
-            # Save in database
-            async with AsyncSessionLocal() as db:
-                sess_record = TelegramAuthSession(
-                    phone_number=self.phone_number,
-                    auth_state="AUTHENTICATED",
-                    session_string=saved_session
-                )
-                db.add(sess_record)
-                await db.commit()
+            # Persist across all layers (memory, disk, .env, DB)
+            await self._persist_session(saved_session, self.phone_number)
 
             await self._register_channel_listeners()
+            await self._broadcast_current_status()
             return {"success": True, "message": "Telegram authorized and connected successfully!"}
 
         except PhoneCodeInvalidError:
@@ -730,16 +921,11 @@ class TelegramService:
             saved_session = self.client.session.save()
             self.session_string = saved_session
 
-            async with AsyncSessionLocal() as db:
-                sess_record = TelegramAuthSession(
-                    phone_number=self.phone_number,
-                    auth_state="AUTHENTICATED",
-                    session_string=saved_session
-                )
-                db.add(sess_record)
-                await db.commit()
+            # Persist across all layers (memory, disk, .env, DB)
+            await self._persist_session(saved_session, self.phone_number)
 
             await self._register_channel_listeners()
+            await self._broadcast_current_status()
             return {"success": True, "message": "2FA verified! Telegram connected successfully."}
         except PasswordHashInvalidError:
             return {"success": False, "error": "Invalid 2FA password. Please try again."}
@@ -750,6 +936,7 @@ class TelegramService:
         """Returns status of Telegram integration with zero credential or phone exposure."""
         return {
             "is_connected": self.is_connected and self.is_authorized,
+            "is_authorized": self.is_authorized,
             "status": self.connection_status,
             "error_message": self.error_message,
             "last_sync_at": self.last_sync_at.isoformat() if self.last_sync_at else None,

@@ -11,6 +11,8 @@ frontend/.env.*.local
 *.session
 *.session-journal
 backend/*.session*
+*.string
+*telegram_session*
 
 # Databases & local persistent storage
 data/
@@ -39,6 +41,7 @@ frontend/node_modules/
 frontend/.next/
 frontend/out/
 .turbo/
+*.tsbuildinfo
 
 # Logs & Diagnostics
 *.log

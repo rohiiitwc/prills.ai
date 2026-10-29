@@ -187,3 +187,14 @@ export async function syncTelegramChannels(): Promise<boolean> {
     return false;
   }
 }
+
+export async function reconnectTelegram(): Promise<{ success: boolean; message?: string; error?: string }> {
+  try {
+    const res = await fetch(`${getApiBaseUrl()}/telegram/reconnect`, { method: 'POST' });
+    const data = await res.json();
+    return data;
+  } catch (err) {
+    return { success: false, error: err instanceof Error ? err.message : 'Network error' };
+  }
+}
+

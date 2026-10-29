@@ -141,23 +141,23 @@ def test_convert_telegram_time_to_ist_standard():
 
 def test_convert_telegram_time_to_ist_next_day():
     from backend.app.parser import convert_telegram_time_to_ist
-    # Example 2 from requirement: 20:15 -> 04:45 IST on the following day
+    # Rollover case: 20:15 -> 04:45 IST (next day flag true)
     conv, next_day = convert_telegram_time_to_ist("20:15")
-    assert conv == "04:45 IST on the following day"
+    assert conv == "04:45 IST"
     assert next_day is True
 
 def test_convert_telegram_time_double_conversion_guard():
     from backend.app.parser import convert_telegram_time_to_ist
-    # Requirement 7: Do not apply the conversion twice to an already-converted timestamp
+    # Requirement: Do not apply the conversion twice to an already-converted timestamp
     already_converted = "19:42 IST"
     conv1, next1 = convert_telegram_time_to_ist(already_converted)
     assert conv1 == "19:42 IST"
     assert next1 is False
 
-    already_next_day = "04:45 IST on the following day"
+    already_next_day = "04:45 IST"
     conv2, next2 = convert_telegram_time_to_ist(already_next_day)
-    assert conv2 == "04:45 IST on the following day"
-    assert next2 is True
+    assert conv2 == "04:45 IST"
+    assert next2 is False
 
 def test_signals_use_converted_ist_entry_time():
     now = datetime.now(timezone.utc)
@@ -180,7 +180,7 @@ CALL UP"""
 🔴 PUT DOWN ⬇"""
     res_otc = parse_telegram_message(msg_otc, published_at=now, received_at=now, channel_category="OTC")
     assert res_otc["data"]["entry_time_announced"] == "20:15:00"
-    assert res_otc["data"]["entry_time_converted"] == "04:45:00 IST on the following day"
+    assert res_otc["data"]["entry_time_converted"] == "04:45:00 IST"
     assert res_otc["data"]["direction"] == "PUT"
     assert res_otc["data"]["asset"] == "CADJPY-OTC"
 

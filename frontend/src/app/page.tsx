@@ -147,9 +147,17 @@ export default function HomePage() {
       }
     }, 20000);
 
+    // Periodic status poll (every 15s) to guarantee UI stays synchronized with backend
+    const statusPollInterval = setInterval(() => {
+      fetchTelegramStatus().then(tg => {
+        if (tg) setTelegramStatus(tg);
+      }).catch(() => {});
+    }, 15000);
+
     return () => {
       isUnmounted = true;
       clearInterval(pingInterval);
+      clearInterval(statusPollInterval);
       if (reconnectTimeout) {
         clearTimeout(reconnectTimeout);
       }

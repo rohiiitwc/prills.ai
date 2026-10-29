@@ -11,7 +11,8 @@ import {
   submitTelegramCode,
   submitTelegram2FA,
   injectTestMessage,
-  syncTelegramChannels
+  syncTelegramChannels,
+  reconnectTelegram
 } from '../../lib/api';
 import {
   Send,
@@ -81,7 +82,9 @@ function TelegramLabContent() {
     try {
       const data = await fetchTelegramStatus();
       setStatus(data);
-      if (data.is_connected) setStep('DONE');
+      if (data.is_connected) {
+        setStep('DONE');
+      }
     } catch (err) {
       console.warn('Status error:', err);
     } finally {
@@ -89,8 +92,32 @@ function TelegramLabContent() {
     }
   };
 
+  const handleForceReconnect = async () => {
+    setActionLoading(true);
+    setFeedback(null);
+    try {
+      const res = await reconnectTelegram();
+      if (res.success) {
+        setFeedback({ type: 'success', message: res.message || 'Telegram connection successfully re-established!' });
+        setStep('DONE');
+      } else {
+        setFeedback({ type: 'error', message: res.error || 'Failed to reconnect. Please verify credentials or request a new code.' });
+      }
+      await refreshStatus();
+    } catch (err: unknown) {
+      const msg = err instanceof Error ? err.message : 'Reconnect failed';
+      setFeedback({ type: 'error', message: msg });
+    } finally {
+      setActionLoading(false);
+    }
+  };
+
   useEffect(() => {
     refreshStatus();
+    const interval = setInterval(() => {
+      fetchTelegramStatus().then(setStatus).catch(() => {});
+    }, 10000);
+    return () => clearInterval(interval);
   }, []);
 
   const handleRequestCode = async (e: React.FormEvent) => {
@@ -218,14 +245,26 @@ function TelegramLabContent() {
             </div>
           </div>
 
-          <button
-            onClick={handleSyncNow}
-            disabled={actionLoading}
-            className="flex items-center gap-2 px-4 py-2.5 rounded-xl bg-cyan-950/80 hover:bg-cyan-900 border border-cyan-800 text-cyan-300 font-semibold text-xs transition-all shadow-lg cursor-pointer"
-          >
-            <RefreshCw className={`w-3.5 h-3.5 ${actionLoading ? 'animate-spin' : ''}`} />
-            <span>Re-Sync Channels</span>
-          </button>
+          <div className="flex items-center gap-2 flex-wrap">
+            <button
+              onClick={handleForceReconnect}
+              disabled={actionLoading}
+              title="Force instant reconnection with the stored Telegram session"
+              className="flex items-center gap-2 px-4 py-2.5 rounded-xl bg-indigo-950/80 hover:bg-indigo-900 border border-indigo-700 text-indigo-300 font-semibold text-xs transition-all shadow-lg cursor-pointer"
+            >
+              <Radio className={`w-3.5 h-3.5 ${actionLoading ? 'animate-pulse text-indigo-200' : 'text-indigo-400'}`} />
+              <span>Reconnect Stream</span>
+            </button>
+
+            <button
+              onClick={handleSyncNow}
+              disabled={actionLoading}
+              className="flex items-center gap-2 px-4 py-2.5 rounded-xl bg-cyan-950/80 hover:bg-cyan-900 border border-cyan-800 text-cyan-300 font-semibold text-xs transition-all shadow-lg cursor-pointer"
+            >
+              <RefreshCw className={`w-3.5 h-3.5 ${actionLoading ? 'animate-spin' : ''}`} />
+              <span>Re-Sync Channels</span>
+            </button>
+          </div>
         </div>
 
         {/* Global Feedback Alert */}
@@ -310,14 +349,55 @@ function TelegramLabContent() {
             </div>
 
             {step === 'DONE' && (
-              <div className="p-5 rounded-xl bg-emerald-950/30 border border-emerald-800/60 space-y-3">
-                <div className="flex items-center gap-2 text-emerald-400 font-bold text-sm">
-                  <CheckCircle2 className="w-4 h-4" />
-                  <span>Authorized & Actively Ingesting</span>
+              <div className={`p-5 rounded-xl border space-y-4 ${
+                status?.is_connected
+                  ? 'bg-emerald-950/30 border-emerald-800/60'
+                  : 'bg-amber-950/30 border-amber-800/60'
+              }`}>
+                <div className="flex items-center justify-between gap-2 flex-wrap">
+                  <div className={`flex items-center gap-2 font-bold text-sm ${
+                    status?.is_connected ? 'text-emerald-400' : 'text-amber-400'
+                  }`}>
+                    {status?.is_connected ? (
+                      <CheckCircle2 className="w-4 h-4 shrink-0 text-emerald-400" />
+                    ) : (
+                      <AlertCircle className="w-4 h-4 shrink-0 text-amber-400" />
+                    )}
+                    <span>{status?.is_connected ? 'Authorized & Actively Ingesting' : 'Stream Disconnected / Offline'}</span>
+                  </div>
+                  <span className={`text-[10px] font-mono px-2 py-0.5 rounded font-bold ${
+                    status?.is_connected ? 'bg-emerald-900/60 text-emerald-300' : 'bg-amber-900/60 text-amber-300'
+                  }`}>
+                    {status?.status || 'UNKNOWN'}
+                  </span>
                 </div>
+
                 <p className="text-xs text-slate-300">
-                  Your MTProto session is saved securely on the server. Incoming signals stream live with sub-second latency. All credentials are encrypted.
+                  {status?.is_connected
+                    ? 'Your MTProto session is permanently saved across server storage and .env. Incoming signals stream live with sub-second latency. The automated connection watchdog verifies connectivity every 15 seconds.'
+                    : 'The server session is stored, but the MTProto stream is currently inactive or network dropped. Click Reconnect to resume live streaming immediately.'}
                 </p>
+
+                <div className="flex items-center gap-3 pt-1 flex-wrap">
+                  <button
+                    type="button"
+                    onClick={handleForceReconnect}
+                    disabled={actionLoading}
+                    className="flex items-center gap-1.5 px-3.5 py-2 rounded-lg bg-cyan-600 hover:bg-cyan-500 text-slate-950 font-bold text-xs transition-all shadow cursor-pointer"
+                  >
+                    <RefreshCw className={`w-3.5 h-3.5 ${actionLoading ? 'animate-spin' : ''}`} />
+                    <span>{status?.is_connected ? 'Refresh Connection' : 'Reconnect Now'}</span>
+                  </button>
+
+                  <button
+                    type="button"
+                    onClick={() => setStep('CREDENTIALS')}
+                    className="flex items-center gap-1.5 px-3 py-2 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-300 hover:text-white font-medium text-xs transition-all cursor-pointer border border-slate-700"
+                  >
+                    <Key className="w-3.5 h-3.5 text-cyan-400" />
+                    <span>Change Account / Re-Authorize</span>
+                  </button>
+                </div>
               </div>
             )}
 

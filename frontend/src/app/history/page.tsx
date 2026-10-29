@@ -206,8 +206,15 @@ function HistoryContent() {
 
     connectWs();
 
+    const statusPollInterval = setInterval(() => {
+      fetchTelegramStatus().then(tg => {
+        if (tg) setTelegramStatus(tg);
+      }).catch(() => {});
+    }, 15000);
+
     return () => {
       isUnmounted = true;
+      clearInterval(statusPollInterval);
       if (reconnectTimeout) clearTimeout(reconnectTimeout);
       if (wsRef.current) {
         wsRef.current.close();

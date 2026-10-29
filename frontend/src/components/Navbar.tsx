@@ -15,7 +15,7 @@ import {
   Menu, 
   X 
 } from 'lucide-react';
-import { syncTelegramChannels } from '../lib/api';
+import { syncTelegramChannels, reconnectTelegram } from '../lib/api';
 
 interface NavbarProps {
   isConnected: boolean;
@@ -83,6 +83,16 @@ export const Navbar: React.FC<NavbarProps> = ({ isConnected, telegramStatus, las
         setSyncFeedback('Synced');
         setTimeout(() => setSyncFeedback(null), 2500);
       } else {
+        // If sync failed, attempt auto-reconnect using persistent server session
+        try {
+          const rec = await reconnectTelegram();
+          if (rec.success) {
+            setSyncFeedback('Healed');
+            if (onSync) await onSync();
+            setTimeout(() => setSyncFeedback(null), 2500);
+            return;
+          }
+        } catch {}
         setSyncFeedback('Retry');
         setTimeout(() => setSyncFeedback(null), 2500);
       }
