@@ -136,6 +136,16 @@ export async function POST(
     // Empty body is acceptable
   }
 
+  // Fast direct resolution for live chart telemetry without generating auto-signals
+  if (pathStr === 'ai-lab/analyze' && body?.chart_only) {
+    const market_category = (body?.market_category || 'OTC').toUpperCase();
+    const rawAsset = (body?.asset || '').trim().toUpperCase();
+    const isScanAll = !rawAsset || rawAsset === 'ALL' || rawAsset === 'AUTO' || rawAsset === 'NONE';
+    const targetAsset = isScanAll ? (market_category === 'OTC' ? 'USDINR-OTC' : 'USDJPY') : rawAsset;
+    const chartRes = await runServerlessAiAnalysis(market_category, targetAsset, false, true);
+    return NextResponse.json(chartRes);
+  }
+
   try {
     const controller = new AbortController();
     const timeout = setTimeout(() => controller.abort(), 3000);
