@@ -544,83 +544,83 @@ function getAiLabHistoryFallback(market?: string | null, asset?: string | null) 
 }
 
 const INSTRUMENT_BASE_PRICES: Record<string, number> = {
-  // Quotex Official 24/7 OTC Currency Pairs
+  // Quotex Official 24/7 OTC Currency Pairs (Calibrated to Quotex Live Trading Terminal)
   'USDINR-OTC': 105.100,
   'USDPKR-OTC': 278.40,
-  'USDBRL-OTC': 5.750,
-  'USDZAR-OTC': 17.65,
-  'NZDCHF-OTC': 0.5170,
-  'USDMXN-OTC': 19.825,
+  'USDBRL-OTC': 5.4420,
+  'USDZAR-OTC': 16.7220,
+  'NZDCHF-OTC': 0.46410,
+  'USDMXN-OTC': 18.7880,
   'USDBDT-OTC': 120.50,
   'USDEGP-OTC': 48.90,
-  'USDTRY-OTC': 34.280,
+  'USDTRY-OTC': 49.940,
   'USDARS-OTC': 995.00,
   'USDCOP-OTC': 4420.00,
   'USDIDR-OTC': 15720.00,
   'USDPHP-OTC': 58.20,
   'USDDZD-OTC': 133.50,
   'USDNGN-OTC': 1650.00,
-  'EURUSD-OTC': 1.08620,
-  'GBPUSD-OTC': 1.29850,
-  'USDJPY-OTC': 152.450,
-  'USDCHF-OTC': 0.86550,
-  'USDCAD-OTC': 1.38950,
-  'EURJPY-OTC': 165.620,
-  'EURGBP-OTC': 0.83650,
-  'GBPJPY-OTC': 197.850,
-  'AUDUSD-OTC': 0.65800,
-  'NZDUSD-OTC': 0.59750,
-  'AUDCAD-OTC': 0.91450,
-  'AUDCHF-OTC': 0.56950,
-  'AUDJPY-OTC': 100.250,
-  'AUDNZD-OTC': 1.10150,
-  'CADJPY-OTC': 109.720,
-  'CADCHF-OTC': 0.62300,
-  'CHFJPY-OTC': 176.150,
-  'EURCHF-OTC': 0.94020,
-  'EURCAD-OTC': 1.50950,
-  'EURNZD-OTC': 1.81800,
-  'EURAUD-OTC': 1.65080,
-  'GBPAUD-OTC': 1.97350,
-  'GBPCAD-OTC': 1.80450,
-  'GBPCHF-OTC': 1.12400,
-  'GBPNZD-OTC': 2.17300,
-  'NZDJPY-OTC': 91.050,
-  'NZDCAD-OTC': 0.83020,
+  'EURUSD-OTC': 1.11610,
+  'GBPUSD-OTC': 1.33910,
+  'USDJPY-OTC': 157.420,
+  'USDCHF-OTC': 0.82390,
+  'USDCAD-OTC': 1.39570,
+  'EURJPY-OTC': 175.650,
+  'EURGBP-OTC': 0.83320,
+  'GBPJPY-OTC': 210.800,
+  'AUDUSD-OTC': 0.70340,
+  'NZDUSD-OTC': 0.56350,
+  'AUDCAD-OTC': 0.98130,
+  'AUDCHF-OTC': 0.57930,
+  'AUDJPY-OTC': 110.690,
+  'AUDNZD-OTC': 1.24800,
+  'CADJPY-OTC': 112.790,
+  'CADCHF-OTC': 0.59030,
+  'CHFJPY-OTC': 191.070,
+  'EURCHF-OTC': 0.91920,
+  'EURCAD-OTC': 1.55720,
+  'EURNZD-OTC': 1.98030,
+  'EURAUD-OTC': 1.58670,
+  'GBPAUD-OTC': 1.90430,
+  'GBPCAD-OTC': 1.86880,
+  'GBPCHF-OTC': 1.10320,
+  'GBPNZD-OTC': 2.37670,
+  'NZDJPY-OTC': 88.680,
+  'NZDCAD-OTC': 0.78620,
   'BTCUSD-OTC': 71850.00,
   'ETHUSD-OTC': 2640.00,
   'XAUUSD-OTC': 2745.50,
   'XAGUSD-OTC': 33.80,
 
   // Quotex Live Market (Spot Forex Interbank Rates)
-  'USDJPY': 157.45,
-  'EURJPY': 175.63,
-  'AUDJPY': 110.72,
-  'AUDUSD': 0.7034,
-  'EURCAD': 1.5562,
-  'AUDCAD': 0.9811,
-  'EURUSD': 1.1158,
-  'GBPUSD': 1.3390,
-  'USDCHF': 0.8650,
-  'USDCAD': 1.3892,
-  'NZDUSD': 0.5970,
-  'EURGBP': 0.8362,
-  'GBPJPY': 197.62,
-  'CADJPY': 109.60,
-  'CHFJPY': 176.05,
-  'NZDJPY': 90.95,
-  'EURAUD': 1.6500,
-  'EURCHF': 0.9395,
-  'EURNZD': 1.8170,
-  'GBPAUD': 1.9720,
-  'GBPCAD': 1.8030,
-  'GBPCHF': 1.1230,
-  'GBPNZD': 2.1710,
-  'AUDCHF': 0.5690,
-  'AUDNZD': 1.1010,
-  'CADCHF': 0.6225,
-  'NZDCAD': 0.8295,
-  'NZDCHF': 0.5165,
+  'EURUSD': 1.11610,
+  'GBPUSD': 1.33910,
+  'USDJPY': 157.420,
+  'USDCHF': 0.82390,
+  'USDCAD': 1.39570,
+  'AUDUSD': 0.70340,
+  'NZDUSD': 0.56350,
+  'EURGBP': 0.83320,
+  'EURJPY': 175.650,
+  'GBPJPY': 210.800,
+  'AUDJPY': 110.690,
+  'CADJPY': 112.790,
+  'CHFJPY': 191.070,
+  'EURAUD': 1.58670,
+  'EURCAD': 1.55720,
+  'EURCHF': 0.91920,
+  'EURNZD': 1.98030,
+  'GBPAUD': 1.90430,
+  'GBPCAD': 1.86880,
+  'GBPCHF': 1.10320,
+  'GBPNZD': 2.37670,
+  'AUDCAD': 0.98130,
+  'AUDCHF': 0.57930,
+  'AUDNZD': 1.24800,
+  'CADCHF': 0.59030,
+  'NZDCAD': 0.78620,
+  'NZDCHF': 0.46410,
+  'NZDJPY': 88.680,
   'XAUUSD': 2744.0,
   'BTCUSD': 71800.0,
   'ETHUSD': 2635.0
@@ -653,17 +653,17 @@ function getBasePriceForAsset(asset: string): number {
   if (upper.includes('INR')) return 105.10;
   if (upper.includes('PHP')) return 58.20;
   if (upper.includes('EGP')) return 48.90;
-  if (upper.includes('TRY')) return 34.28;
-  if (upper.includes('MXN')) return 19.825;
-  if (upper.includes('ZAR')) return 17.65;
-  if (upper.includes('JPY')) return 157.45;
-  if (upper.includes('BRL')) return 5.75;
-  if (upper.includes('EURCAD')) return 1.5562;
-  if (upper.includes('AUDCAD')) return 0.9811;
+  if (upper.includes('TRY')) return 49.940;
+  if (upper.includes('MXN')) return 18.788;
+  if (upper.includes('ZAR')) return 16.722;
+  if (upper.includes('JPY')) return 157.42;
+  if (upper.includes('BRL')) return 5.442;
+  if (upper.includes('EURCAD')) return 1.5572;
+  if (upper.includes('AUDCAD')) return 0.9813;
   if (upper.includes('AUDUSD')) return 0.7034;
-  if (upper.includes('EURUSD')) return 1.1158;
-  if (upper.includes('GBPUSD')) return 1.3390;
-  return 1.0862;
+  if (upper.includes('EURUSD')) return 1.1161;
+  if (upper.includes('GBPUSD')) return 1.3391;
+  return 1.1161;
 }
 
 function roundPriceForAsset(price: number, basePrice: number): number {

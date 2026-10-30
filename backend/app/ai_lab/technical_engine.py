@@ -10,48 +10,49 @@ def get_ist_now() -> datetime:
 
 # Base price anchor points for all Quotex instruments (OTC and Live)
 INSTRUMENT_BASE_PRICES = {
-    # --- Quotex 24/7 OTC Currency Pairs ---
-    "EURUSD-OTC": 1.08620,
-    "GBPUSD-OTC": 1.29850,
-    "USDJPY-OTC": 152.450,
-    "USDCHF-OTC": 0.86550,
-    "USDCAD-OTC": 1.38950,
-    "EURJPY-OTC": 165.620,
-    "EURGBP-OTC": 0.83650,
-    "GBPJPY-OTC": 197.850,
-    "AUDUSD-OTC": 0.65800,
-    "NZDUSD-OTC": 0.59750,
+    # --- Quotex 24/7 OTC Currency Pairs (Calibrated to Quotex Live Trading Terminal) ---
     "USDINR-OTC": 105.100,
-    "USDBDT-OTC": 120.50,
     "USDPKR-OTC": 278.40,
+    "USDBRL-OTC": 5.4420,
+    "USDZAR-OTC": 16.7220,
+    "NZDCHF-OTC": 0.46410,
+    "USDMXN-OTC": 18.7880,
+    "USDBDT-OTC": 120.50,
     "USDEGP-OTC": 48.90,
-    "USDTRY-OTC": 34.280,
-    "USDBRL-OTC": 5.750,
-    "USDMXN-OTC": 19.825,
-    "USDNGN-OTC": 1650.00,
+    "USDTRY-OTC": 49.940,
     "USDARS-OTC": 995.00,
     "USDCOP-OTC": 4420.00,
     "USDIDR-OTC": 15720.00,
     "USDPHP-OTC": 58.20,
-    "USDZAR-OTC": 17.65,
     "USDDZD-OTC": 133.50,
-    "AUDJPY-OTC": 100.250,
-    "AUDNZD-OTC": 1.10150,
-    "AUDCHF-OTC": 0.56950,
-    "CADJPY-OTC": 109.720,
-    "CADCHF-OTC": 0.62300,
-    "CHFJPY-OTC": 176.150,
-    "EURCHF-OTC": 0.94020,
-    "EURCAD-OTC": 1.50950,
-    "EURNZD-OTC": 1.81800,
-    "EURAUD-OTC": 1.65080,
-    "GBPAUD-OTC": 1.97350,
-    "GBPCAD-OTC": 1.80450,
-    "GBPCHF-OTC": 1.12400,
-    "GBPNZD-OTC": 2.17300,
-    "NZDJPY-OTC": 91.050,
-    "NZDCAD-OTC": 0.83020,
-    "NZDCHF-OTC": 0.51700,
+    "USDNGN-OTC": 1650.00,
+    "EURUSD-OTC": 1.11610,
+    "GBPUSD-OTC": 1.33910,
+    "USDJPY-OTC": 157.420,
+    "USDCHF-OTC": 0.82390,
+    "USDCAD-OTC": 1.39570,
+    "EURJPY-OTC": 175.650,
+    "EURGBP-OTC": 0.83320,
+    "GBPJPY-OTC": 210.800,
+    "AUDUSD-OTC": 0.70340,
+    "NZDUSD-OTC": 0.56350,
+    "AUDCAD-OTC": 0.98130,
+    "AUDCHF-OTC": 0.57930,
+    "AUDJPY-OTC": 110.690,
+    "AUDNZD-OTC": 1.24800,
+    "CADJPY-OTC": 112.790,
+    "CADCHF-OTC": 0.59030,
+    "CHFJPY-OTC": 191.070,
+    "EURCHF-OTC": 0.91920,
+    "EURCAD-OTC": 1.55720,
+    "EURNZD-OTC": 1.98030,
+    "EURAUD-OTC": 1.58670,
+    "GBPAUD-OTC": 1.90430,
+    "GBPCAD-OTC": 1.86880,
+    "GBPCHF-OTC": 1.10320,
+    "GBPNZD-OTC": 2.37670,
+    "NZDJPY-OTC": 88.680,
+    "NZDCAD-OTC": 0.78620,
     # --- Quotex 24/7 OTC Commodities & Crypto (https://quotex.com/en/demo-trade) ---
     "XAUUSD-OTC": 2745.50,
     "XAGUSD-OTC": 33.80,
@@ -79,34 +80,34 @@ INSTRUMENT_BASE_PRICES = {
     "GER40-OTC": 19450.00,
     "UK100-OTC": 8240.00,
     # --- Quotex Live Market Instruments ---
-    "EURUSD": 1.08580,
-    "GBPUSD": 1.29800,
-    "USDJPY": 152.380,
-    "USDCHF": 0.86500,
-    "USDCAD": 1.38920,
-    "AUDUSD": 0.65750,
-    "NZDUSD": 0.59700,
-    "EURGBP": 0.83620,
-    "EURJPY": 165.500,
-    "GBPJPY": 197.620,
-    "AUDJPY": 100.150,
-    "CADJPY": 109.600,
-    "CHFJPY": 176.050,
-    "EURAUD": 1.65000,
-    "EURCAD": 1.50850,
-    "EURCHF": 0.93950,
-    "EURNZD": 1.81700,
-    "GBPAUD": 1.97200,
-    "GBPCAD": 1.80300,
-    "GBPCHF": 1.12300,
-    "GBPNZD": 2.17100,
-    "AUDCAD": 0.91450,
-    "AUDCHF": 0.56900,
-    "AUDNZD": 1.10100,
-    "CADCHF": 0.62250,
-    "NZDCAD": 0.82950,
-    "NZDCHF": 0.51650,
-    "NZDJPY": 90.950,
+    "EURUSD": 1.11610,
+    "GBPUSD": 1.33910,
+    "USDJPY": 157.420,
+    "USDCHF": 0.82390,
+    "USDCAD": 1.39570,
+    "AUDUSD": 0.70340,
+    "NZDUSD": 0.56350,
+    "EURGBP": 0.83320,
+    "EURJPY": 175.650,
+    "GBPJPY": 210.800,
+    "AUDJPY": 110.690,
+    "CADJPY": 112.790,
+    "CHFJPY": 191.070,
+    "EURAUD": 1.58670,
+    "EURCAD": 1.55720,
+    "EURCHF": 0.91920,
+    "EURNZD": 1.98030,
+    "GBPAUD": 1.90430,
+    "GBPCAD": 1.86880,
+    "GBPCHF": 1.10320,
+    "GBPNZD": 2.37670,
+    "AUDCAD": 0.98130,
+    "AUDCHF": 0.57930,
+    "AUDNZD": 1.24800,
+    "CADCHF": 0.59030,
+    "NZDCAD": 0.78620,
+    "NZDCHF": 0.46410,
+    "NZDJPY": 88.680,
     "XAUUSD": 2744.00,
     "XAGUSD": 33.75,
     "USOIL": 69.15,
@@ -137,23 +138,33 @@ def get_base_price_for_asset(asset: str) -> float:
     if "ARS" in upper:
         return 995.0
     if "JPY" in upper:
-        return 152.45
+        return 157.42
     if "INR" in upper:
         return 105.10
     if "PKR" in upper:
         return 278.40
     if "BRL" in upper:
-        return 5.750
+        return 5.4420
     if "ZAR" in upper:
-        return 17.65
+        return 16.7220
     if "MXN" in upper:
-        return 19.825
+        return 18.7880
     if "BDT" in upper:
         return 120.50
     if "EGP" in upper:
         return 48.90
     if "TRY" in upper:
-        return 34.280
+        return 49.940
+    if "EURCAD" in upper:
+        return 1.5572
+    if "AUDCAD" in upper:
+        return 0.9813
+    if "AUDUSD" in upper:
+        return 0.7034
+    if "EURUSD" in upper:
+        return 1.1161
+    if "GBPUSD" in upper:
+        return 1.3391
     if "DZD" in upper:
         return 133.50
     if "US30" in upper:
