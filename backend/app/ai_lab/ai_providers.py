@@ -56,7 +56,10 @@ def generate_fallback_response(
     sma20 = indicators.get("sma20", 1.0)
     pattern = indicators.get("pattern", "Standard Continuation Bar")
 
-    confidence = 80.0 if trend in ["BULLISH", "BEARISH"] else 62.0
+    if trend in ["BULLISH", "BEARISH"]:
+        confidence = 88.5 if abs(rsi - 50) >= 6 else 81.5
+    else:
+        confidence = 68.0
 
     if trend == "BULLISH":
         obs = (

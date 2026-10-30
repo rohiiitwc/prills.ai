@@ -170,9 +170,11 @@ export interface SimulatedOutcome {
 export interface UpcomingSignal {
   asset: string;
   market_category: 'OTC' | 'LIVE';
-  direction: 'CALL' | 'PUT';
-  direction_display: 'CALL UP' | 'PUT DOWN';
-  entry_time: string; // e.g. "11:46:00 IST"
+  direction: 'CALL' | 'PUT' | 'WAIT';
+  direction_display: string;
+  trade_status?: 'QUALIFIED_TRADE' | 'NO_TRADE';
+  confidence_threshold?: number;
+  entry_time: string; // e.g. "11:23:00 IST"
   entry_time_raw: string;
   announced_at: string;
   seconds_to_entry: number;

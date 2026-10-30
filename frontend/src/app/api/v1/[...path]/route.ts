@@ -300,7 +300,7 @@ export async function POST(
   // AI Learning Lab Analyze Fallback
   if (pathStr === 'ai-lab/analyze') {
     const market_category = (body?.market_category || 'OTC').toUpperCase();
-    const asset = (body?.asset || (market_category === 'OTC' ? 'AUDCAD-OTC' : 'EURUSD')).toUpperCase();
+    const asset = (body?.asset || (market_category === 'OTC' ? 'EURUSD-OTC' : 'EURUSD')).toUpperCase();
     const result = runServerlessAiAnalysis(market_category, asset);
     return NextResponse.json(result);
   }
@@ -350,14 +350,14 @@ const serverlessAiSessions: ServerlessAiSession[] = [
   {
     id: 1,
     market_category: 'OTC',
-    asset: 'AUDCAD-OTC',
+    asset: 'EURUSD-OTC',
     timeframe: '1m',
     chart_data_source: 'Quotex OTC Algorithmic Replay (Simulated Historical Data)',
     timestamp_ist: '30-Oct-2026 11:00 IST',
-    start_price: 0.8845,
-    high_price: 0.8849,
-    low_price: 0.8843,
-    close_price: 0.8848,
+    start_price: 1.0845,
+    high_price: 1.0849,
+    low_price: 1.0843,
+    close_price: 1.0848,
     candle_outcome: 'UP',
     rsi: 58.4,
     primary_trend: 'BULLISH',
@@ -641,8 +641,15 @@ function runServerlessAiAnalysis(market_category: string, asset: string) {
   nextMinute.setSeconds(0, 0);
   const entryTimeIst = nextMinute.toLocaleTimeString('en-IN', { timeZone: 'Asia/Kolkata', hour12: false, hour: '2-digit', minute: '2-digit', second: '2-digit' }) + ' IST';
   const announcedAtIst = now.toLocaleTimeString('en-IN', { timeZone: 'Asia/Kolkata', hour12: false, hour: '2-digit', minute: '2-digit', second: '2-digit' }) + ' IST';
-  const dir = primary_trend === 'BULLISH' ? 'CALL' : (primary_trend === 'BEARISH' ? 'PUT' : (rsi >= 50 ? 'CALL' : 'PUT'));
-  const dirDisplay = dir === 'CALL' ? 'CALL UP' : 'PUT DOWN';
+  
+  const confidencePct = (primary_trend === 'BULLISH' || primary_trend === 'BEARISH') && Math.abs(rsi - 50) >= 5 ? 88.5 : 74.0;
+  const isQualified = confidencePct >= 85.0 && (primary_trend === 'BULLISH' || primary_trend === 'BEARISH');
+  const dir: 'CALL' | 'PUT' | 'WAIT' = isQualified ? (primary_trend === 'BULLISH' ? 'CALL' : 'PUT') : 'WAIT';
+  const dirDisplay = isQualified ? (dir === 'CALL' ? 'CALL UP' : 'PUT DOWN') : `NO TRADE (CONFIDENCE ${confidencePct}% < 85%)`;
+  const tradeStatus: 'QUALIFIED_TRADE' | 'NO_TRADE' = isQualified ? 'QUALIFIED_TRADE' : 'NO_TRADE';
+  const executionNotes = isQualified
+    ? `High Confidence Confluence (${confidencePct}% >= 85%). Enter trade on Quotex platform at exactly ${entryTimeIst} with 1-Minute expiry.`
+    : `AI confidence is ${confidencePct}% (below 85% threshold). Market consolidation or conflicting indicators on Quotex. DO NOT TAKE THIS TRADE.`;
 
   return {
     session_id: newSession.id,
@@ -667,6 +674,8 @@ function runServerlessAiAnalysis(market_category: string, asset: string) {
       market_category,
       direction: dir,
       direction_display: dirDisplay,
+      trade_status: tradeStatus,
+      confidence_threshold: 85.0,
       entry_time: entryTimeIst,
       entry_time_raw: nextMinute.toISOString(),
       announced_at: announcedAtIst,
@@ -674,10 +683,10 @@ function runServerlessAiAnalysis(market_category: string, asset: string) {
       timing_notice: 'ANNOUNCED 30 SECONDS BEFORE ENTRY',
       expiry_duration: '1 Minutes',
       strike_price: lastClose,
-      confidence_percentage: 82.0,
+      confidence_percentage: confidencePct,
       model_consensus: ai_analysis.consensus_notes,
       technical_trigger: `EMA 9 vs SMA 20 (${ema9} / ${sma20}) + RSI (${rsi}) + Pattern: ${pattern}`,
-      quotex_execution_notes: `Enter trade on Quotex platform at exactly ${entryTimeIst} with 1-Minute expiry.`
+      quotex_execution_notes: executionNotes
     },
     simulated_outcome: {
       prediction,

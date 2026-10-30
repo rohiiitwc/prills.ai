@@ -81,6 +81,7 @@ export default function AILabPage() {
   // Loading & generation states
   const [isAnalyzing, setIsAnalyzing] = useState(false);
   const [analysisStep, setAnalysisStep] = useState<string>('');
+  const [analysisSecondsLeft, setAnalysisSecondsLeft] = useState<number>(30);
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
   
   // Auto-scan feature: automatically analyzes 30 seconds before every 1-minute candle
@@ -147,27 +148,52 @@ export default function AILabPage() {
     }
   };
 
-  // Main generator function
+  // Main generator function: takes 30 seconds to analyze Quotex platform charts
   const executeAnalysis = async (isAuto: boolean = false) => {
     if (isAnalyzing) return;
     setIsAnalyzing(true);
     setErrorMsg(null);
     setIsPlayingReplay(false);
+    setAnalysisSecondsLeft(30);
 
     try {
-      setAnalysisStep('Scanning Quotex 1-minute candlestick telemetry...');
-      await new Promise(r => setTimeout(r, 450));
+      if (!isAuto) {
+        // Run dedicated 30-second analyzing progress
+        const startTime = Date.now();
+        const durationMs = 30000;
+        const fetchPromise = generateAiLabAnalysis(activeTab, selectedAsset);
 
-      setAnalysisStep('Evaluating RSI(14), Moving Averages (EMA 9/SMA 20) & Bollinger Bands...');
-      await new Promise(r => setTimeout(r, 450));
+        await new Promise<void>((resolve) => {
+          const interval = setInterval(() => {
+            const elapsed = Date.now() - startTime;
+            const remaining = Math.max(0, Math.ceil((durationMs - elapsed) / 1000));
+            setAnalysisSecondsLeft(remaining);
 
-      setAnalysisStep('Querying OpenAI, Gemini, and Groq independent AI engines...');
-      const payload = await generateAiLabAnalysis(activeTab, selectedAsset);
+            if (remaining > 22) {
+              setAnalysisStep(`[Step 1/4] Extracting 1-minute candlestick telemetry for ${selectedAsset} on Quotex...`);
+            } else if (remaining > 15) {
+              setAnalysisStep(`[Step 2/4] Evaluating Price Action, RSI (14), EMA 9 vs SMA 20, and Bollinger Bands...`);
+            } else if (remaining > 7) {
+              setAnalysisStep(`[Step 3/4] Requesting Tri-Model Consensus from OpenAI, Google Gemini, and Groq...`);
+            } else {
+              setAnalysisStep(`[Step 4/4] Verifying 85% Minimum Confidence Gate & Formatting Entry Time (HH:MM:00 IST)...`);
+            }
 
-      setAnalysisStep('Synthesizing 30-Second Pre-Entry Prediction & Timing...');
-      await new Promise(r => setTimeout(r, 350));
+            if (remaining <= 0) {
+              clearInterval(interval);
+              resolve();
+            }
+          }, 400);
+        });
 
-      setCurrentAnalysis(payload);
+        const payload = await fetchPromise;
+        setCurrentAnalysis(payload);
+      } else {
+        setAnalysisStep('Scanning Quotex 1-minute candlestick telemetry...');
+        const payload = await generateAiLabAnalysis(activeTab, selectedAsset);
+        setCurrentAnalysis(payload);
+      }
+
       setReplaySecond(60);
       await loadStats();
       await loadHistory(activeTab);
@@ -177,6 +203,7 @@ export default function AILabPage() {
     } finally {
       setIsAnalyzing(false);
       setAnalysisStep('');
+      setAnalysisSecondsLeft(30);
     }
   };
 
@@ -403,181 +430,342 @@ export default function AILabPage() {
           {/* FEATURED HERO CARD: UPCOMING PREDICTED SIGNAL (30s PRE-ENTRY) */}
           {/* ========================================================================= */}
           <div className="mb-8">
-            {upcomingSignal ? (
-              <div className={`p-6 sm:p-8 rounded-3xl border-2 transition-all relative overflow-hidden shadow-2xl ${
-                upcomingSignal.direction === 'CALL'
-                  ? 'bg-gradient-to-br from-emerald-950/40 via-slate-950/90 to-slate-950 border-emerald-500/70 shadow-emerald-950/40'
-                  : 'bg-gradient-to-br from-rose-950/40 via-slate-950/90 to-slate-950 border-rose-500/70 shadow-rose-950/40'
-              }`}>
-                {/* Background glow effects */}
-                <div className={`absolute top-0 right-0 w-96 h-96 rounded-full blur-3xl pointer-events-none -mr-20 -mt-20 opacity-20 ${
-                  upcomingSignal.direction === 'CALL' ? 'bg-emerald-500' : 'bg-rose-500'
-                }`}></div>
-
-                {/* Status Bar */}
-                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-5 border-b border-slate-800/80 mb-6">
-                  <div className="flex items-center gap-2.5">
-                    <span className={`px-3 py-1 rounded-full text-xs font-black uppercase tracking-wider flex items-center gap-1.5 animate-pulse ${
-                      upcomingSignal.direction === 'CALL'
-                        ? 'bg-emerald-500 text-slate-950'
-                        : 'bg-rose-500 text-white'
-                    }`}>
-                      <Bell className="w-3.5 h-3.5 fill-current" />
-                      UPCOMING PREDICTED SIGNAL
-                    </span>
-                    <span className="text-xs font-mono font-bold text-slate-400">
-                      {upcomingSignal.timing_notice}
+            {isAnalyzing ? (
+              /* Active 30-Second Deep Market & Candlestick Analysis Scan View */
+              <div className="glass-panel p-6 sm:p-8 rounded-3xl border-2 border-cyan-500/70 bg-gradient-to-br from-cyan-950/40 via-slate-950 to-[#080d1a] relative overflow-hidden shadow-2xl">
+                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-4 border-b border-slate-800 mb-6">
+                  <div className="flex items-center gap-2">
+                    <span className="w-3 h-3 rounded-full bg-cyan-400 animate-ping"></span>
+                    <span className="text-xs font-mono font-bold uppercase tracking-wider text-cyan-400">
+                      QUOTEX 30-SECOND MULTI-AI MARKET SCAN IN PROGRESS
                     </span>
                   </div>
-
-                  <div className="flex items-center gap-2 text-xs font-mono">
-                    <span className="text-slate-400">Announced At:</span>
-                    <span className="text-white font-bold bg-slate-900 px-2 py-0.5 rounded border border-slate-800">
-                      {upcomingSignal.announced_at}
-                    </span>
+                  <div className="px-3 py-1 rounded-full bg-slate-900 border border-cyan-700/60 text-xs font-mono font-black text-cyan-300">
+                    SCAN COUNTDOWN: {analysisSecondsLeft}s REMAINING
                   </div>
                 </div>
 
-                {/* Main Signal Display Grid */}
-                <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-center">
-                  
-                  {/* Left Column (5 Cols): Direction, Asset, Expiry */}
-                  <div className="lg:col-span-5 space-y-4">
-                    <div className="flex items-center gap-3">
-                      <span className="text-xs font-mono uppercase tracking-widest text-cyan-400 font-black">
-                        {upcomingSignal.market_category === 'OTC' ? 'QUOTEX OTC PAIR' : 'SPOT FOREX PAIR'}
-                      </span>
-                      <span className="text-xs text-slate-500">•</span>
-                      <span className="text-xs font-mono font-bold text-slate-400">
-                        EXPIRY: {upcomingSignal.expiry_duration}
-                      </span>
-                    </div>
+                <div className="text-center py-6 sm:py-8 max-w-2xl mx-auto space-y-4">
+                  <div className="w-20 h-20 mx-auto rounded-3xl bg-cyan-950/80 border-2 border-cyan-500 flex items-center justify-center text-cyan-400 shadow-xl shadow-cyan-950/60 animate-pulse">
+                    <Activity className="w-10 h-10 animate-spin" />
+                  </div>
 
-                    <div className="text-3xl sm:text-4xl font-black text-white tracking-tight">
-                      {upcomingSignal.asset}
-                    </div>
+                  <div>
+                    <span className="text-xs font-mono uppercase tracking-widest text-slate-400 font-bold block mb-1">
+                      EXAMINING {selectedAsset} ({activeTab === 'OTC' ? 'QUOTEX OTC' : 'SPOT FOREX'})
+                    </span>
+                    <h2 className="text-2xl sm:text-3xl font-black text-white">
+                      AI Tri-Engine Telemetry Scan
+                    </h2>
+                  </div>
 
-                    {/* Massive Action Call/Put Badge */}
-                    <div className={`p-4 rounded-2xl border flex items-center justify-between ${
-                      upcomingSignal.direction === 'CALL'
-                        ? 'bg-emerald-950/60 border-emerald-500/80 text-emerald-300'
-                        : 'bg-rose-950/60 border-rose-500/80 text-rose-300'
-                    }`}>
-                      <div className="flex items-center gap-3">
-                        <div className={`w-12 h-12 rounded-xl flex items-center justify-center font-black text-xl shadow-lg ${
+                  {/* 30-Second Animated Progress Bar */}
+                  <div className="space-y-2 pt-2">
+                    <div className="flex items-center justify-between text-xs font-mono text-slate-400">
+                      <span>Analyzing Window: 30s</span>
+                      <span className="text-cyan-300 font-bold">{Math.round(((30 - analysisSecondsLeft) / 30) * 100)}% Complete</span>
+                      <span>Target Entry: Upcoming :00 Mark</span>
+                    </div>
+                    <div className="w-full h-3 rounded-full bg-slate-900 border border-slate-800 overflow-hidden">
+                      <div 
+                        className="h-full bg-gradient-to-r from-cyan-500 via-purple-500 to-emerald-400 transition-all duration-300"
+                        style={{ width: `${Math.min(100, Math.max(5, ((30 - analysisSecondsLeft) / 30) * 100))}%` }}
+                      ></div>
+                    </div>
+                  </div>
+
+                  {/* Step description */}
+                  <div className="p-3.5 rounded-2xl bg-slate-900/90 border border-cyan-800/40 text-xs font-mono font-bold text-cyan-300 animate-pulse">
+                    {analysisStep || `Evaluating 1-minute candlestick telemetry for ${selectedAsset}...`}
+                  </div>
+
+                  <p className="text-[11px] text-slate-500">
+                    Quotex price action is evaluated across OpenAI, Gemini, and Groq. Binary trade signals are delivered only when confidence reaches &ge;85%.
+                  </p>
+                </div>
+              </div>
+            ) : upcomingSignal ? (
+              (() => {
+                const isNoTrade = upcomingSignal.direction === 'WAIT' || upcomingSignal.confidence_percentage < 85 || upcomingSignal.trade_status === 'NO_TRADE';
+
+                if (isNoTrade) {
+                  return (
+                    /* NO TRADE RECOMMENDED (CONFIDENCE < 85%) CARD */
+                    <div className="p-6 sm:p-8 rounded-3xl border-2 transition-all relative overflow-hidden shadow-2xl bg-gradient-to-br from-amber-950/40 via-slate-950/90 to-slate-950 border-amber-500/70 shadow-amber-950/40">
+                      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-5 border-b border-slate-800/80 mb-6">
+                        <div className="flex items-center gap-2.5">
+                          <span className="px-3 py-1 rounded-full text-xs font-black uppercase tracking-wider flex items-center gap-1.5 bg-amber-500 text-slate-950 animate-pulse">
+                            <AlertTriangle className="w-3.5 h-3.5 fill-current" />
+                            NO TRADE RECOMMENDED — MARKET INDECISION
+                          </span>
+                          <span className="text-xs font-mono font-bold text-amber-300">
+                            CONFIDENCE: {upcomingSignal.confidence_percentage}% (LESS THAN 85% MINIMUM)
+                          </span>
+                        </div>
+                        <div className="flex items-center gap-2 text-xs font-mono">
+                          <span className="text-slate-400">Evaluated At:</span>
+                          <span className="text-white font-bold bg-slate-900 px-2 py-0.5 rounded border border-slate-800">
+                            {upcomingSignal.announced_at}
+                          </span>
+                        </div>
+                      </div>
+
+                      <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-center">
+                        <div className="lg:col-span-5 space-y-4">
+                          <div className="flex items-center gap-3">
+                            <span className="text-xs font-mono uppercase tracking-widest text-amber-400 font-black">
+                              {upcomingSignal.market_category === 'OTC' ? 'QUOTEX OTC PAIR' : 'SPOT FOREX PAIR'}
+                            </span>
+                            <span className="text-xs text-slate-500">•</span>
+                            <span className="text-xs font-mono font-bold text-slate-400">
+                              EXPIRY: {upcomingSignal.expiry_duration}
+                            </span>
+                          </div>
+
+                          <div className="text-3xl sm:text-4xl font-black text-white tracking-tight">
+                            {upcomingSignal.asset}
+                          </div>
+
+                          <div className="p-4 rounded-2xl border bg-amber-950/50 border-amber-600/70 text-amber-300 flex items-center justify-between">
+                            <div className="flex items-center gap-3">
+                              <div className="w-12 h-12 rounded-xl flex items-center justify-center font-black text-xl bg-amber-500 text-slate-950 shadow-lg">
+                                <MinusCircle className="w-8 h-8 stroke-[2.5]" />
+                              </div>
+                              <div>
+                                <span className="text-[10px] font-bold uppercase tracking-wider block text-amber-200">
+                                  QUOTEX ACTION
+                                </span>
+                                <span className="text-xl sm:text-2xl font-black tracking-wide text-amber-100">
+                                  DO NOT TRADE (WAIT)
+                                </span>
+                              </div>
+                            </div>
+                            <div className="text-right">
+                              <span className="text-[10px] font-mono text-slate-400 block">AI Score</span>
+                              <span className="text-base font-mono font-bold text-amber-400">
+                                {upcomingSignal.confidence_percentage}% &lt; 85%
+                              </span>
+                            </div>
+                          </div>
+                        </div>
+
+                        <div className="lg:col-span-4 bg-slate-900/90 rounded-2xl border border-slate-800 p-5 text-center flex flex-col justify-center items-center shadow-inner">
+                          <span className="text-[10px] uppercase font-mono font-bold tracking-wider text-amber-400 mb-1 flex items-center gap-1">
+                            <ShieldCheck className="w-3.5 h-3.5 text-amber-400" />
+                            85% MINIMUM CONFIDENCE GATE ACTIVE
+                          </span>
+                          <div className="text-lg font-black text-white bg-slate-950 px-4 py-2 rounded-xl border border-slate-800 my-2 text-amber-300">
+                            TRADE FILTERED OUT
+                          </div>
+                          <p className="text-xs text-slate-300 mt-2 leading-relaxed">
+                            AI models detected conflicting signals or consolidation on Quotex. 
+                            To protect trading balance, binary execution is aborted when confidence is below 85%. 
+                            Wait for next high-confluence 1-minute setup.
+                          </p>
+                        </div>
+
+                        <div className="lg:col-span-3 space-y-3">
+                          <div className="p-3.5 rounded-xl bg-slate-900/80 border border-slate-800 text-xs">
+                            <span className="text-[10px] uppercase font-bold text-slate-400 block mb-1">
+                              Technical Confluence
+                            </span>
+                            <p className="text-[11px] text-slate-300 font-mono leading-tight">
+                              {upcomingSignal.technical_trigger}
+                            </p>
+                          </div>
+                          <div className="p-3.5 rounded-xl bg-slate-900/80 border border-slate-800 text-xs">
+                            <span className="text-[10px] uppercase font-bold text-slate-400 block mb-1">
+                              Target Next Window
+                            </span>
+                            <p className="text-xs font-mono font-bold text-cyan-300">
+                              {upcomingSignal.entry_time}
+                            </p>
+                          </div>
+                          <div className="p-3 rounded-xl bg-amber-950/30 border border-amber-800/40 text-[11px] text-amber-300/90 leading-tight">
+                            <strong className="text-white block mb-0.5">Quotex Notice:</strong>
+                            {upcomingSignal.quotex_execution_notes}
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                  );
+                }
+
+                return (
+                  /* QUALIFIED HIGH-CONFIDENCE TRADE SIGNAL (>= 85%) CARD */
+                  <div className={`p-6 sm:p-8 rounded-3xl border-2 transition-all relative overflow-hidden shadow-2xl ${
+                    upcomingSignal.direction === 'CALL'
+                      ? 'bg-gradient-to-br from-emerald-950/40 via-slate-950/90 to-slate-950 border-emerald-500/70 shadow-emerald-950/40'
+                      : 'bg-gradient-to-br from-rose-950/40 via-slate-950/90 to-slate-950 border-rose-500/70 shadow-rose-950/40'
+                  }`}>
+                    <div className={`absolute top-0 right-0 w-96 h-96 rounded-full blur-3xl pointer-events-none -mr-20 -mt-20 opacity-20 ${
+                      upcomingSignal.direction === 'CALL' ? 'bg-emerald-500' : 'bg-rose-500'
+                    }`}></div>
+
+                    {/* Status Bar */}
+                    <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-5 border-b border-slate-800/80 mb-6">
+                      <div className="flex items-center gap-2.5">
+                        <span className={`px-3 py-1 rounded-full text-xs font-black uppercase tracking-wider flex items-center gap-1.5 animate-pulse ${
                           upcomingSignal.direction === 'CALL'
                             ? 'bg-emerald-500 text-slate-950'
                             : 'bg-rose-500 text-white'
                         }`}>
-                          {upcomingSignal.direction === 'CALL' ? (
-                            <ArrowUpRight className="w-8 h-8 stroke-[3]" />
-                          ) : (
-                            <ArrowDownRight className="w-8 h-8 stroke-[3]" />
-                          )}
-                        </div>
-                        <div>
-                          <span className="text-[10px] font-bold uppercase tracking-wider block text-slate-300">
-                            QUOTEX PREDICTED ACTION
-                          </span>
-                          <span className="text-2xl font-black tracking-wide">
-                            {upcomingSignal.direction === 'CALL' ? 'CALL (UP ⬆)' : 'PUT (DOWN ⬇)'}
-                          </span>
-                        </div>
+                          <Bell className="w-3.5 h-3.5 fill-current" />
+                          QUALIFIED HIGH-CONFIDENCE SIGNAL ({upcomingSignal.confidence_percentage}% &ge; 85%)
+                        </span>
+                        <span className="text-xs font-mono font-bold text-slate-400">
+                          {upcomingSignal.timing_notice}
+                        </span>
                       </div>
 
-                      <div className="text-right">
-                        <span className="text-[10px] font-mono text-slate-400 block">Strike / Base Price</span>
-                        <span className="text-base font-mono font-bold text-white">
-                          {upcomingSignal.strike_price}
+                      <div className="flex items-center gap-2 text-xs font-mono">
+                        <span className="text-slate-400">Announced At:</span>
+                        <span className="text-white font-bold bg-slate-900 px-2 py-0.5 rounded border border-slate-800">
+                          {upcomingSignal.announced_at}
                         </span>
                       </div>
                     </div>
-                  </div>
 
-                  {/* Center Column (4 Cols): EXACT ENTRY TIME & COUNTDOWN */}
-                  <div className="lg:col-span-4 bg-slate-900/90 rounded-2xl border border-slate-800 p-5 text-center flex flex-col justify-center items-center shadow-inner">
-                    <span className="text-[10px] uppercase font-mono font-bold tracking-wider text-slate-400 mb-1 flex items-center gap-1">
-                      <Target className="w-3.5 h-3.5 text-cyan-400" />
-                      EXACT TIME WHEN TO ENTER TRADE
-                    </span>
+                    {/* Main Signal Display Grid */}
+                    <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-center">
+                      
+                      {/* Left Column (5 Cols): Direction, Asset, Expiry */}
+                      <div className="lg:col-span-5 space-y-4">
+                        <div className="flex items-center gap-3">
+                          <span className="text-xs font-mono uppercase tracking-widest text-cyan-400 font-black">
+                            {upcomingSignal.market_category === 'OTC' ? 'QUOTEX OTC PAIR' : 'SPOT FOREX PAIR'}
+                          </span>
+                          <span className="text-xs text-slate-500">•</span>
+                          <span className="text-xs font-mono font-bold text-slate-400">
+                            EXPIRY: {upcomingSignal.expiry_duration}
+                          </span>
+                        </div>
 
-                    {/* Large Entry Time */}
-                    <div className="text-2xl sm:text-3xl font-mono font-black text-white bg-slate-950 px-4 py-2 rounded-xl border border-slate-800 my-2 shadow-sm text-cyan-300">
-                      {upcomingSignal.entry_time}
-                    </div>
+                        <div className="text-3xl sm:text-4xl font-black text-white tracking-tight">
+                          {upcomingSignal.asset}
+                        </div>
 
-                    {/* Live Ticking Countdown */}
-                    <div className="w-full mt-2">
-                      {timingInfo.secondsToEntry > 0 ? (
-                        <div className="space-y-2">
-                          <div className="flex items-center justify-between text-xs font-mono">
-                            <span className="text-slate-400">Countdown to Execution:</span>
-                            <span className="text-lg font-black font-mono text-amber-400 animate-pulse">
-                              T-Minus {timingInfo.secondsToEntry}s
+                        {/* Massive Action Call/Put Badge */}
+                        <div className={`p-4 rounded-2xl border flex items-center justify-between ${
+                          upcomingSignal.direction === 'CALL'
+                            ? 'bg-emerald-950/60 border-emerald-500/80 text-emerald-300'
+                            : 'bg-rose-950/60 border-rose-500/80 text-rose-300'
+                        }`}>
+                          <div className="flex items-center gap-3">
+                            <div className={`w-12 h-12 rounded-xl flex items-center justify-center font-black text-xl shadow-lg ${
+                              upcomingSignal.direction === 'CALL'
+                                ? 'bg-emerald-500 text-slate-950'
+                                : 'bg-rose-500 text-white'
+                            }`}>
+                              {upcomingSignal.direction === 'CALL' ? (
+                                <ArrowUpRight className="w-8 h-8 stroke-[3]" />
+                              ) : (
+                                <ArrowDownRight className="w-8 h-8 stroke-[3]" />
+                              )}
+                            </div>
+                            <div>
+                              <span className="text-[10px] font-bold uppercase tracking-wider block text-slate-300">
+                                QUOTEX PREDICTED ACTION
+                              </span>
+                              <span className="text-2xl font-black tracking-wide">
+                                {upcomingSignal.direction === 'CALL' ? 'CALL (UP ⬆)' : 'PUT (DOWN ⬇)'}
+                              </span>
+                            </div>
+                          </div>
+
+                          <div className="text-right">
+                            <span className="text-[10px] font-mono text-slate-400 block">Strike / Base Price</span>
+                            <span className="text-base font-mono font-bold text-white">
+                              {upcomingSignal.strike_price}
                             </span>
                           </div>
-
-                          {/* Animated Progress Bar */}
-                          <div className="w-full h-3 rounded-full bg-slate-950 overflow-hidden border border-slate-800">
-                            <div 
-                              className="h-full bg-gradient-to-r from-amber-500 via-cyan-400 to-emerald-400 transition-all duration-1000"
-                              style={{ width: `${Math.min(100, Math.max(0, (timingInfo.secondsToEntry / 30) * 100))}%` }}
-                            ></div>
-                          </div>
-                          <span className="text-[11px] text-slate-400 block">
-                            Prepare trade on Quotex now • Enter at 00:00 mark
-                          </span>
                         </div>
-                      ) : timingInfo.isEntryDue ? (
-                        <div className="p-3 rounded-xl bg-emerald-500 text-slate-950 font-black text-sm animate-bounce shadow-lg shadow-emerald-500/50">
-                          🚀 ENTRY TIME REACHED! CLICK {upcomingSignal.direction === 'CALL' ? 'CALL (UP)' : 'PUT (DOWN)'} NOW!
-                        </div>
-                      ) : timingInfo.isTradeInFlight ? (
-                        <div className="p-3 rounded-xl bg-cyan-950/80 border border-cyan-700/60 text-cyan-300 text-xs font-bold flex items-center justify-center gap-2">
-                          <Activity className="w-4 h-4 animate-spin text-cyan-400" />
-                          <span>Trade In-Flight (1-Minute Candle Forming on Quotex...)</span>
-                        </div>
-                      ) : (
-                        <div className="p-3 rounded-xl bg-slate-950 border border-slate-800 text-slate-400 text-xs">
-                          Candle Completed. Analyzing next 30s pre-entry setup...
-                        </div>
-                      )}
-                    </div>
-                  </div>
-
-                  {/* Right Column (3 Cols): Multi-AI Consensus & Instructions */}
-                  <div className="lg:col-span-3 space-y-3">
-                    <div className="p-3.5 rounded-xl bg-slate-900/80 border border-slate-800 text-xs">
-                      <div className="flex items-center justify-between mb-1">
-                        <span className="font-bold text-purple-300">Tri-AI Agreement</span>
-                        <span className="font-mono font-bold text-white bg-purple-950 px-2 py-0.5 rounded border border-purple-800">
-                          {upcomingSignal.confidence_percentage}%
-                        </span>
                       </div>
-                      <p className="text-[11px] text-slate-400 leading-tight">
-                        OpenAI + Gemini + Groq unanimous consensus for 1-minute expiration.
-                      </p>
+
+                      {/* Center Column (4 Cols): EXACT ENTRY TIME & COUNTDOWN */}
+                      <div className="lg:col-span-4 bg-slate-900/90 rounded-2xl border border-slate-800 p-5 text-center flex flex-col justify-center items-center shadow-inner">
+                        <span className="text-[10px] uppercase font-mono font-bold tracking-wider text-slate-400 mb-1 flex items-center gap-1">
+                          <Target className="w-3.5 h-3.5 text-cyan-400" />
+                          EXACT TIME WHEN TO ENTER TRADE
+                        </span>
+
+                        {/* Large Entry Time - STRICTLY ENDING IN :00 */}
+                        <div className="text-2xl sm:text-3xl font-mono font-black text-white bg-slate-950 px-4 py-2 rounded-xl border border-slate-800 my-2 shadow-sm text-cyan-300">
+                          {upcomingSignal.entry_time}
+                        </div>
+
+                        {/* Live Ticking Countdown */}
+                        <div className="w-full mt-2">
+                          {timingInfo.secondsToEntry > 0 ? (
+                            <div className="space-y-2">
+                              <div className="flex items-center justify-between text-xs font-mono">
+                                <span className="text-slate-400">Countdown to Execution:</span>
+                                <span className="text-lg font-black font-mono text-amber-400 animate-pulse">
+                                  T-Minus {timingInfo.secondsToEntry}s
+                                </span>
+                              </div>
+
+                              <div className="w-full h-3 rounded-full bg-slate-950 overflow-hidden border border-slate-800">
+                                <div 
+                                  className="h-full bg-gradient-to-r from-amber-500 via-cyan-400 to-emerald-400 transition-all duration-1000"
+                                  style={{ width: `${Math.min(100, Math.max(0, (timingInfo.secondsToEntry / 30) * 100))}%` }}
+                                ></div>
+                              </div>
+                              <span className="text-[11px] text-slate-400 block">
+                                Prepare trade on Quotex now • Enter at 00:00 mark
+                              </span>
+                            </div>
+                          ) : timingInfo.isEntryDue ? (
+                            <div className="p-3 rounded-xl bg-emerald-500 text-slate-950 font-black text-sm animate-bounce shadow-lg shadow-emerald-500/50">
+                              🚀 ENTRY TIME REACHED! CLICK {upcomingSignal.direction === 'CALL' ? 'CALL (UP)' : 'PUT (DOWN)'} NOW!
+                            </div>
+                          ) : timingInfo.isTradeInFlight ? (
+                            <div className="p-3 rounded-xl bg-cyan-950/80 border border-cyan-700/60 text-cyan-300 text-xs font-bold flex items-center justify-center gap-2">
+                              <Activity className="w-4 h-4 animate-spin text-cyan-400" />
+                              <span>Trade In-Flight (1-Minute Candle Forming on Quotex...)</span>
+                            </div>
+                          ) : (
+                            <div className="p-3 rounded-xl bg-slate-950 border border-slate-800 text-slate-400 text-xs">
+                              Candle Completed. Analyzing next 30s pre-entry setup...
+                            </div>
+                          )}
+                        </div>
+                      </div>
+
+                      {/* Right Column (3 Cols): Multi-AI Consensus & Instructions */}
+                      <div className="lg:col-span-3 space-y-3">
+                        <div className="p-3.5 rounded-xl bg-slate-900/80 border border-slate-800 text-xs">
+                          <div className="flex items-center justify-between mb-1">
+                            <span className="font-bold text-purple-300">Tri-AI Confluence</span>
+                            <span className="font-mono font-bold text-white bg-purple-950 px-2 py-0.5 rounded border border-purple-800">
+                              {upcomingSignal.confidence_percentage}%
+                            </span>
+                          </div>
+                          <p className="text-[11px] text-slate-400 leading-tight">
+                            OpenAI + Gemini + Groq verified &ge;85% high-probability confluence.
+                          </p>
+                        </div>
+
+                        <div className="p-3.5 rounded-xl bg-slate-900/80 border border-slate-800 text-xs">
+                          <span className="text-[10px] uppercase font-bold text-slate-400 block mb-1">
+                            Technical Trigger
+                          </span>
+                          <p className="text-[11px] text-slate-300 font-mono leading-tight">
+                            {upcomingSignal.technical_trigger}
+                          </p>
+                        </div>
+
+                        <div className="p-3 rounded-xl bg-cyan-950/30 border border-cyan-800/40 text-[11px] text-cyan-300/90 leading-tight">
+                          <strong className="text-white block mb-0.5">Quotex Execution:</strong>
+                          {upcomingSignal.quotex_execution_notes}
+                        </div>
+                      </div>
+
                     </div>
 
-                    <div className="p-3.5 rounded-xl bg-slate-900/80 border border-slate-800 text-xs">
-                      <span className="text-[10px] uppercase font-bold text-slate-400 block mb-1">
-                        Technical Trigger
-                      </span>
-                      <p className="text-[11px] text-slate-300 font-mono leading-tight">
-                        {upcomingSignal.technical_trigger}
-                      </p>
-                    </div>
-
-                    {/* Quotex Execution Guide Pill */}
-                    <div className="p-3 rounded-xl bg-cyan-950/30 border border-cyan-800/40 text-[11px] text-cyan-300/90 leading-tight">
-                      <strong className="text-white block mb-0.5">Quotex Execution:</strong>
-                      {upcomingSignal.quotex_execution_notes}
-                    </div>
                   </div>
-
-                </div>
-
-              </div>
+                );
+              })()
             ) : (
               /* Waiting / Radar Scanner State when no signal loaded yet */
               <div className="glass-panel p-6 sm:p-8 rounded-3xl border border-slate-800 bg-slate-950/80 relative overflow-hidden">
@@ -593,8 +781,8 @@ export default function AILabPage() {
                       Quotex 1-Minute Pre-Entry Radar
                     </h2>
                     <p className="text-xs sm:text-sm text-slate-400 mt-1 max-w-2xl leading-relaxed">
-                      Upcoming predicted signals are generated automatically <strong className="text-cyan-300">30 seconds before every 1-minute candle</strong>. 
-                      You can wait for the auto-scan or generate an upcoming prediction immediately below.
+                      Upcoming predicted signals take <strong className="text-cyan-300">30 seconds for deep chart analysis</strong> and are generated before candle entry. 
+                      Signals with &lt;85% confidence are filtered out. Click below to analyze your selected instrument.
                     </p>
                   </div>
 
@@ -606,18 +794,17 @@ export default function AILabPage() {
                       className="px-6 py-3.5 rounded-xl text-xs font-black uppercase tracking-wider bg-gradient-to-r from-cyan-500 via-blue-600 to-cyan-500 hover:from-cyan-400 hover:to-blue-500 text-slate-950 font-black shadow-lg shadow-cyan-500/25 active:scale-95 transition-all flex items-center justify-center gap-2 cursor-pointer"
                     >
                       <Zap className="w-4 h-4 fill-current" />
-                      <span>{isAnalyzing ? 'Analyzing Quotex...' : `GENERATE ${activeTab} UPCOMING SIGNAL NOW`}</span>
+                      <span>{isAnalyzing ? `Analyzing Chart (${analysisSecondsLeft}s)...` : `GENERATE ${activeTab} SIGNAL (30s ANALYSIS)`}</span>
                     </button>
                   </div>
                 </div>
 
-                {/* Radar Scanning Progress bar */}
                 <div className="mt-6 pt-4 border-t border-slate-800/80 flex flex-col sm:flex-row sm:items-center justify-between gap-2 text-xs font-mono text-slate-400">
                   <div className="flex items-center gap-2">
                     <Clock className="w-4 h-4 text-cyan-400" />
-                    <span>Next Auto-Scan in: <strong className="text-white">{timingInfo.secToNextScan}s</strong> (at :30s mark of minute)</span>
+                    <span>Auto-Scan in: <strong className="text-white">{timingInfo.secToNextScan}s</strong> (takes 30s analysis before entry)</span>
                   </div>
-                  <span>Target Entry Time: Next :00 Full Minute Mark (IST)</span>
+                  <span>Exact Entry Time: Always at :00 Seconds Mark (IST)</span>
                 </div>
               </div>
             )}
@@ -740,10 +927,10 @@ export default function AILabPage() {
                     <RefreshCw className={`w-4 h-4 ${isAnalyzing ? 'animate-spin' : ''}`} />
                     <span>
                       {isAnalyzing 
-                        ? 'Analyzing Quotex Chart...' 
+                        ? `Analyzing Chart (${analysisSecondsLeft}s)...` 
                         : activeTab === 'OTC' 
-                        ? 'GENERATE OTC SIGNAL (30s PRE-ENTRY)' 
-                        : 'GENERATE LIVE SIGNAL (30s PRE-ENTRY)'}
+                        ? 'GENERATE OTC SIGNAL (30s ANALYSIS)' 
+                        : 'GENERATE LIVE SIGNAL (30s ANALYSIS)'}
                     </span>
                   </button>
                 </div>

@@ -5,7 +5,12 @@ const nextConfig = {
       {
         source: '/telegram',
         destination: '/',
-        permanent: false,
+        permanent: true,
+      },
+      {
+        source: '/telegram/:path*',
+        destination: '/',
+        permanent: true,
       },
     ];
   },

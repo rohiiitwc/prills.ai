@@ -147,6 +147,12 @@ async def analyze_market(
         db.add(resp)
     await db.commit()
 
+    confidence_pct = round(sum(p["confidence_score"] for p in providers.values()) / max(1, len(providers)), 1)
+    target_entry_dt = (now_ist + timedelta(minutes=1)).replace(second=0, microsecond=0)
+    entry_time_str = target_entry_dt.strftime("%H:%M:00 IST")
+    entry_time_iso = target_entry_dt.isoformat()
+    seconds_to_entry = max(1, int((target_entry_dt - now_ist).total_seconds()))
+
     return {
         "session_id": session.id,
         "market_category": category,
@@ -161,19 +167,25 @@ async def analyze_market(
         "upcoming_signal": {
             "asset": asset,
             "market_category": category,
-            "direction": "CALL" if ai_analysis["consensus_trend"] == "BULLISH" else ("PUT" if ai_analysis["consensus_trend"] == "BEARISH" else ("CALL" if indicators["rsi"] >= 50 else "PUT")),
-            "direction_display": "CALL UP" if (ai_analysis["consensus_trend"] == "BULLISH" or (ai_analysis["consensus_trend"] == "RANGING" and indicators["rsi"] >= 50)) else "PUT DOWN",
-            "entry_time": (now_ist + timedelta(minutes=1)).replace(second=0, microsecond=0).strftime("%H:%M:00 IST"),
-            "entry_time_raw": (now_ist + timedelta(minutes=1)).replace(second=0, microsecond=0).isoformat(),
+            "direction": "CALL" if (confidence_pct >= 85.0 and ai_analysis["consensus_trend"] == "BULLISH") else ("PUT" if (confidence_pct >= 85.0 and ai_analysis["consensus_trend"] == "BEARISH") else "WAIT"),
+            "direction_display": ("CALL UP" if ai_analysis["consensus_trend"] == "BULLISH" else "PUT DOWN") if (confidence_pct >= 85.0 and ai_analysis["consensus_trend"] in ["BULLISH", "BEARISH"]) else f"NO TRADE (CONFIDENCE {confidence_pct}% < 85%)",
+            "trade_status": "QUALIFIED_TRADE" if (confidence_pct >= 85.0 and ai_analysis["consensus_trend"] in ["BULLISH", "BEARISH"]) else "NO_TRADE",
+            "confidence_threshold": 85.0,
+            "entry_time": entry_time_str,
+            "entry_time_raw": entry_time_iso,
             "announced_at": now_ist.strftime("%H:%M:%S IST"),
-            "seconds_to_entry": max(1, int(((now_ist + timedelta(minutes=1)).replace(second=0, microsecond=0) - now_ist).total_seconds())),
+            "seconds_to_entry": seconds_to_entry,
             "timing_notice": "ANNOUNCED 30 SECONDS BEFORE ENTRY",
             "expiry_duration": "1 Minutes",
             "strike_price": current_price,
-            "confidence_percentage": round(sum(p["confidence_score"] for p in providers.values()) / max(1, len(providers)), 1),
+            "confidence_percentage": confidence_pct,
             "model_consensus": ai_analysis["consensus_notes"],
             "technical_trigger": f"EMA 9 vs SMA 20 ({indicators['ema9']} / {indicators['sma20']}) + RSI ({indicators['rsi']}) + Pattern: {indicators['pattern']}",
-            "quotex_execution_notes": "Enter trade on Quotex platform at exactly " + (now_ist + timedelta(minutes=1)).replace(second=0, microsecond=0).strftime("%H:%M:00 IST") + " with 1-Minute expiry."
+            "quotex_execution_notes": (
+                f"High Confidence Confluence ({confidence_pct}% >= 85%). Enter trade on Quotex platform at exactly {entry_time_str} with 1-Minute expiry."
+                if (confidence_pct >= 85.0 and ai_analysis["consensus_trend"] in ["BULLISH", "BEARISH"])
+                else f"AI confidence is {confidence_pct}% (below 85% threshold). Market consolidation or conflicting indicators detected on Quotex. DO NOT TAKE THIS TRADE."
+            )
         },
         "simulated_outcome": {
             "prediction": hypothetical_pred,
