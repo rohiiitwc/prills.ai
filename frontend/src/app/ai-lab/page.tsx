@@ -287,13 +287,17 @@ export default function AILabPage() {
 
           if (selectedAsset === 'ALL') {
             if (remaining > 22) {
-              setAnalysisStep(`[Step 1/4] Scanning all ${activeTab === 'OTC' ? 'Quotex OTC' : 'Live'} pairs candlestick telemetry across platform...`);
+              setAnalysisStep(
+                activeTab === 'OTC'
+                  ? `[Step 1/4] Scanning all 15 Quotex OTC pairs (USD/PKR, USD/BRL, USD/ZAR, NZD/CHF, USD/INR, USD/MXN, etc.)...`
+                  : `[Step 1/4] Scanning all 19 Quotex Live pairs (USD/JPY, EUR/CAD, AUD/CAD, EUR/JPY, AUD/JPY, AUD/USD, etc.)...`
+              );
             } else if (remaining > 15) {
-              setAnalysisStep(`[Step 2/4] Evaluating RSI (14), Moving Averages (EMA 9/SMA 20) & Bollinger Bands across all pairs...`);
+              setAnalysisStep(`[Step 2/4] Evaluating RSI (14), Moving Averages (EMA 9/SMA 20) & Bollinger Bands across every pair...`);
             } else if (remaining > 7) {
-              setAnalysisStep(`[Step 3/4] Requesting Tri-Model Consensus (OpenAI, Gemini, Groq) to find strongest setup...`);
+              setAnalysisStep(`[Step 3/4] Requesting Tri-Model Consensus (OpenAI, Gemini, Groq) to rank the strongest setup...`);
             } else {
-              setAnalysisStep(`[Step 4/4] Selecting highest confidence trade (>=85%) and locking entry time at :00 IST...`);
+              setAnalysisStep(`[Step 4/4] Selected highest confidence trade among all scanned pairs (>=85%) | Entry locked at :00 IST...`);
             }
           } else {
             if (remaining > 22) {

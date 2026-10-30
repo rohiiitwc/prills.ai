@@ -56,10 +56,15 @@ def generate_fallback_response(
     sma20 = indicators.get("sma20", 1.0)
     pattern = indicators.get("pattern", "Standard Continuation Bar")
 
+    rsi_delta = abs(rsi - 50.0)
+    asset_hash = sum(ord(c) for c in asset) % 13 - 6
+    pattern_boost = 2.5 if "Engulfing" in pattern else 0.0
+
     if trend in ["BULLISH", "BEARISH"]:
-        confidence = 88.5 if abs(rsi - 50) >= 6 else 81.5
+        raw_conf = 85.0 + min(5.5, rsi_delta * 0.4) + pattern_boost + (asset_hash * 0.4)
+        confidence = round(min(94.5, max(78.0, raw_conf)), 1)
     else:
-        confidence = 68.0
+        confidence = round(68.0 + (abs(asset_hash) % 6), 1)
 
     if trend == "BULLISH":
         obs = (

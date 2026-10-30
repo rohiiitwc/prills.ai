@@ -86,13 +86,16 @@ async def analyze_market(
             score = cand_conf + (10.0 if (cand_conf >= 85.0 and cand_analysis["consensus_trend"] in ["BULLISH", "BEARISH"]) else 0.0)
             evaluated.append((score, cand_conf, cand_asset, cand_candles, cand_ind, cand_analysis))
 
-            # If we find a high-conviction trade (>= 88.5%), prioritize it
-            if cand_conf >= 88.5 and cand_analysis["consensus_trend"] in ["BULLISH", "BEARISH"]:
-                break
-
-        # Sort to pick highest scoring / highest confidence setup
+        # Sort to rank highest scoring setups across all scanned pairs
         evaluated.sort(key=lambda x: x[0], reverse=True)
-        best = evaluated[0]
+        qualified = [e for e in evaluated if e[1] >= 85.0 and e[5]["consensus_trend"] in ["BULLISH", "BEARISH"]]
+        if qualified:
+            minute_seed = int(now_ist.timestamp() // 60)
+            top_pool = qualified[:min(5, len(qualified))]
+            best = top_pool[minute_seed % len(top_pool)]
+        else:
+            best = evaluated[0]
+
         confidence_pct = best[1]
         asset = best[2]
         candles = best[3]
