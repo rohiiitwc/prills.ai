@@ -98,6 +98,16 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     }
   }, []);
 
+  const logout = () => {
+    setUser(null);
+    try {
+      if (typeof window !== 'undefined') {
+        localStorage.removeItem(STORAGE_KEY);
+        document.cookie = 'prills_token=; path=/; max-age=0';
+      }
+    } catch {}
+  };
+
   // Periodic active session watchdog: logs out user and prompts for re-entry every 2 hours
   useEffect(() => {
     if (!user) return;
@@ -290,16 +300,6 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     };
     saveUserSession(fallbackUser);
     return { success: true, message: `Password updated successfully! Welcome back to PRILLS.AI, ${userName}.` };
-  };
-
-  const logout = () => {
-    setUser(null);
-    try {
-      if (typeof window !== 'undefined') {
-        localStorage.removeItem(STORAGE_KEY);
-        document.cookie = 'prills_token=; path=/; max-age=0';
-      }
-    } catch {}
   };
 
   const clearSessionExpired = () => {

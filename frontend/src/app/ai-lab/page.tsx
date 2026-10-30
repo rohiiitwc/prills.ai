@@ -159,23 +159,6 @@ export default function AILabPage() {
     return () => clearInterval(timer);
   }, []);
 
-  // Load initial statistics and history
-  useEffect(() => {
-    fetchTelegramStatus().then(st => {
-      if (st && st.status) setTgStatus(st.status);
-    }).catch(() => {});
-
-    loadStats();
-    loadHistory(activeTab);
-  }, []);
-
-  // Update selected asset when tab changes (defaults to ALL pairs scan)
-  useEffect(() => {
-    setSelectedAsset('ALL');
-    setHistoryFilterAsset('ALL');
-    loadHistory(activeTab);
-  }, [activeTab]);
-
   const loadStats = async () => {
     try {
       const data = await fetchAiLabStats();
@@ -193,6 +176,23 @@ export default function AILabPage() {
       console.warn('AI Lab history notice:', e);
     }
   };
+
+  // Load initial statistics and history
+  useEffect(() => {
+    fetchTelegramStatus().then(st => {
+      if (st && st.status) setTgStatus(st.status);
+    }).catch(() => {});
+
+    loadStats();
+    loadHistory(activeTab);
+  }, []);
+
+  // Update selected asset when tab changes (defaults to ALL pairs scan)
+  useEffect(() => {
+    setSelectedAsset('ALL');
+    setHistoryFilterAsset('ALL');
+    loadHistory(activeTab);
+  }, [activeTab]);
 
   // Compute countdown metrics for Upcoming Signal
   const upcomingSignal = currentAnalysis?.upcoming_signal;

@@ -48,6 +48,23 @@ async def export_snapshot():
         decided = wins_today + loss_today
         win_rate = round((wins_today / decided * 100), 1) if decided > 0 else 0.0
 
+        # Latest OTC
+        stmt_otc = select(ParsedSignal).join(ParsedSignal.source).options(selectinload(ParsedSignal.source)).where(
+            and_(ParsedSignal.market_category == "OTC", ParsedSignal.direction.in_(["CALL", "PUT"]))
+        ).order_by(ParsedSignal.signal_published_at.desc(), ParsedSignal.id.desc()).limit(1)
+        latest_otc = (await db.execute(stmt_otc)).scalar_one_or_none()
+
+        # Latest LIVE
+        stmt_live = select(ParsedSignal).join(ParsedSignal.source).options(selectinload(ParsedSignal.source)).where(
+            and_(ParsedSignal.market_category == "LIVE", ParsedSignal.direction.in_(["CALL", "PUT"]))
+        ).order_by(ParsedSignal.signal_published_at.desc(), ParsedSignal.id.desc()).limit(1)
+        latest_live = (await db.execute(stmt_live)).scalar_one_or_none()
+
+        last_pub = (
+            latest_otc.signal_published_at.isoformat() if latest_otc and latest_otc.signal_published_at
+            else (latest_live.signal_published_at.isoformat() if latest_live and latest_live.signal_published_at else "2026-10-30T00:00:00Z")
+        )
+
         stats = {
             "today_signal_count": total_today,
             "today_win_count": wins_today,
@@ -68,22 +85,10 @@ async def export_snapshot():
             "live_win_rate_percentage": live_win_rate,
             "telegram_connected": True,
             "telegram_auth_status": "CONNECTED",
-            "last_sync_at": now_utc.isoformat(),
+            "last_sync_at": last_pub,
             "source_1_status": "CONNECTED",
             "source_2_status": "CONNECTED"
         }
-
-        # Latest OTC
-        stmt_otc = select(ParsedSignal).join(ParsedSignal.source).options(selectinload(ParsedSignal.source)).where(
-            and_(ParsedSignal.market_category == "OTC", ParsedSignal.direction.in_(["CALL", "PUT"]))
-        ).order_by(ParsedSignal.signal_published_at.desc(), ParsedSignal.id.desc()).limit(1)
-        latest_otc = (await db.execute(stmt_otc)).scalar_one_or_none()
-
-        # Latest LIVE
-        stmt_live = select(ParsedSignal).join(ParsedSignal.source).options(selectinload(ParsedSignal.source)).where(
-            and_(ParsedSignal.market_category == "LIVE", ParsedSignal.direction.in_(["CALL", "PUT"]))
-        ).order_by(ParsedSignal.signal_published_at.desc(), ParsedSignal.id.desc()).limit(1)
-        latest_live = (await db.execute(stmt_live)).scalar_one_or_none()
 
         # Recent results
         stmt_recent = select(ParsedSignal).join(ParsedSignal.source).options(selectinload(ParsedSignal.source)).where(

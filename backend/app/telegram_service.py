@@ -501,11 +501,13 @@ class TelegramService:
 
         logger.info("Registering Telegram message listeners for live MTProto stream...")
 
-        @self.client.on(events.NewMessage())
+        filter_chats = self.resolved_entities if self.resolved_entities else None
+
+        @self.client.on(events.NewMessage(chats=filter_chats))
         async def new_message_handler(event):
             await self._handle_telegram_event(event, is_edit=False)
 
-        @self.client.on(events.MessageEdited())
+        @self.client.on(events.MessageEdited(chats=filter_chats))
         async def edit_message_handler(event):
             await self._handle_telegram_event(event, is_edit=True)
 
@@ -805,7 +807,7 @@ class TelegramService:
             source = self._find_source_for_event(event, chat_id, event_chat_id, chat_username)
 
             if not source:
-                logger.warning(f"Unmapped Telegram event: chat_id={chat_id}, event_chat_id={event_chat_id}, username={chat_username}")
+                logger.debug(f"Unmapped Telegram event: chat_id={chat_id}, event_chat_id={event_chat_id}, username={chat_username}")
                 return
 
             raw_text = (getattr(event.message, "message", None) or "") if hasattr(event, "message") else ""
