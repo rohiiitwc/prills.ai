@@ -303,8 +303,16 @@ export async function POST(
     const rawAsset = (body?.asset || '').trim().toUpperCase();
     const isScanAll = !rawAsset || rawAsset === 'ALL' || rawAsset === 'AUTO' || rawAsset === 'NONE';
     const candidateList = market_category === 'OTC'
-      ? ['EURUSD-OTC', 'USDINR-OTC', 'GBPUSD-OTC', 'USDJPY-OTC', 'USDBDT-OTC', 'USDCAD-OTC', 'USDCHF-OTC', 'EURJPY-OTC', 'GBPJPY-OTC', 'USDTRY-OTC', 'XAUUSD-OTC', 'BTCUSD-OTC', 'AAPL-OTC']
-      : ['AUDCAD'];
+      ? [
+          'EURUSD-OTC', 'USDINR-OTC', 'GBPUSD-OTC', 'USDJPY-OTC', 'USDBDT-OTC',
+          'USDCAD-OTC', 'USDCHF-OTC', 'EURJPY-OTC', 'GBPJPY-OTC', 'USDTRY-OTC',
+          'USDPKR-OTC', 'USDMXN-OTC', 'USDNGN-OTC', 'USDBRL-OTC', 'AUDUSD-OTC',
+          'NZDUSD-OTC', 'EURGBP-OTC', 'AUDJPY-OTC', 'CADJPY-OTC'
+        ]
+      : [
+          'EURUSD', 'GBPUSD', 'USDJPY', 'AUDCAD', 'USDCHF', 'USDCAD',
+          'AUDUSD', 'NZDUSD', 'EURGBP', 'EURJPY', 'GBPJPY', 'AUDJPY'
+        ];
 
     if (isScanAll) {
       let bestResult: any = null;

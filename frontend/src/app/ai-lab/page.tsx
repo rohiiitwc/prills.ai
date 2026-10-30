@@ -92,38 +92,39 @@ const OTC_INSTRUMENTS = [
   { symbol: 'USDPHP-OTC', name: 'USD/PHP (Quotex OTC)' },
   { symbol: 'USDZAR-OTC', name: 'USD/ZAR (Quotex OTC)' },
   { symbol: 'USDDZD-OTC', name: 'USD/DZD (Quotex OTC)' },
-  // --- Commodities & Crypto (Quotex OTC) ---
-  { symbol: 'XAUUSD-OTC', name: 'Gold / USD (Quotex OTC)' },
-  { symbol: 'XAGUSD-OTC', name: 'Silver / USD (Quotex OTC)' },
-  { symbol: 'USCRUDE-OTC', name: 'US Crude Oil (Quotex OTC)' },
-  { symbol: 'UKBRENT-OTC', name: 'UK Brent Oil (Quotex OTC)' },
-  { symbol: 'BTCUSD-OTC', name: 'Bitcoin / USD (Quotex OTC)' },
-  { symbol: 'ETHUSD-OTC', name: 'Ethereum / USD (Quotex OTC)' },
-  // --- Stocks (Quotex OTC - https://quotex.com/en/demo-trade) ---
-  { symbol: 'AAPL-OTC', name: 'Apple Inc (Quotex OTC)' },
-  { symbol: 'MSFT-OTC', name: 'Microsoft (Quotex OTC)' },
-  { symbol: 'AMZN-OTC', name: 'Amazon (Quotex OTC)' },
-  { symbol: 'GOOGL-OTC', name: 'Alphabet Google (Quotex OTC)' },
-  { symbol: 'TSLA-OTC', name: 'Tesla (Quotex OTC)' },
-  { symbol: 'META-OTC', name: 'Meta Platforms (Quotex OTC)' },
-  { symbol: 'NFLX-OTC', name: 'Netflix (Quotex OTC)' },
-  { symbol: 'NVDA-OTC', name: 'NVIDIA (Quotex OTC)' },
-  { symbol: 'BA-OTC', name: 'Boeing (Quotex OTC)' },
-  { symbol: 'INTC-OTC', name: 'Intel (Quotex OTC)' },
-  { symbol: 'PFE-OTC', name: 'Pfizer (Quotex OTC)' },
-  { symbol: 'JNJ-OTC', name: 'Johnson & Johnson (Quotex OTC)' },
-  { symbol: 'MCD-OTC', name: "McDonald's (Quotex OTC)" },
-  // --- Indices (Quotex OTC - https://quotex.com/en/demo-trade) ---
-  { symbol: 'US500-OTC', name: 'S&P 500 Index (Quotex OTC)' },
-  { symbol: 'US30-OTC', name: 'Dow Jones 30 (Quotex OTC)' },
-  { symbol: 'US100-OTC', name: 'Nasdaq 100 (Quotex OTC)' },
-  { symbol: 'GER40-OTC', name: 'DAX 40 Germany (Quotex OTC)' },
-  { symbol: 'UK100-OTC', name: 'FTSE 100 UK (Quotex OTC)' },
 ];
 
 const LIVE_INSTRUMENTS = [
-  // --- Exclusive Live Market Pairs (Non-OTC pairs NOT presented in the OTC section) ---
-  { symbol: 'AUDCAD', name: 'AUD/CAD (Quotex Live Market Exclusive)' },
+  // --- Major Currencies (Quotex Live Market - Non-OTC) ---
+  { symbol: 'EURUSD', name: 'EUR/USD (Spot Forex)' },
+  { symbol: 'GBPUSD', name: 'GBP/USD (Spot Forex)' },
+  { symbol: 'USDJPY', name: 'USD/JPY (Spot Forex)' },
+  { symbol: 'USDCHF', name: 'USD/CHF (Spot Forex)' },
+  { symbol: 'USDCAD', name: 'USD/CAD (Spot Forex)' },
+  { symbol: 'AUDUSD', name: 'AUD/USD (Spot Forex)' },
+  { symbol: 'NZDUSD', name: 'NZD/USD (Spot Forex)' },
+  // --- Cross Currencies (Quotex Live Market - Non-OTC) ---
+  { symbol: 'AUDCAD', name: 'AUD/CAD (Spot Forex Exclusive)' },
+  { symbol: 'EURGBP', name: 'EUR/GBP (Spot Forex)' },
+  { symbol: 'EURJPY', name: 'EUR/JPY (Spot Forex)' },
+  { symbol: 'GBPJPY', name: 'GBP/JPY (Spot Forex)' },
+  { symbol: 'AUDJPY', name: 'AUD/JPY (Spot Forex)' },
+  { symbol: 'CADJPY', name: 'CAD/JPY (Spot Forex)' },
+  { symbol: 'CHFJPY', name: 'CHF/JPY (Spot Forex)' },
+  { symbol: 'NZDJPY', name: 'NZD/JPY (Spot Forex)' },
+  { symbol: 'EURAUD', name: 'EUR/AUD (Spot Forex)' },
+  { symbol: 'EURCAD', name: 'EUR/CAD (Spot Forex)' },
+  { symbol: 'EURCHF', name: 'EUR/CHF (Spot Forex)' },
+  { symbol: 'EURNZD', name: 'EUR/NZD (Spot Forex)' },
+  { symbol: 'GBPAUD', name: 'GBP/AUD (Spot Forex)' },
+  { symbol: 'GBPCAD', name: 'GBP/CAD (Spot Forex)' },
+  { symbol: 'GBPCHF', name: 'GBP/CHF (Spot Forex)' },
+  { symbol: 'GBPNZD', name: 'GBP/NZD (Spot Forex)' },
+  { symbol: 'AUDCHF', name: 'AUD/CHF (Spot Forex)' },
+  { symbol: 'AUDNZD', name: 'AUD/NZD (Spot Forex)' },
+  { symbol: 'CADCHF', name: 'CAD/CHF (Spot Forex)' },
+  { symbol: 'NZDCAD', name: 'NZD/CAD (Spot Forex)' },
+  { symbol: 'NZDCHF', name: 'NZD/CHF (Spot Forex)' },
 ];
 
 export default function AILabPage() {
