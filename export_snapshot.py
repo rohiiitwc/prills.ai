@@ -220,4 +220,6 @@ async def export_snapshot():
         print("Snapshot successfully exported with", len(signals_all["items"]), "signals!")
         print("Today signal count:", stats["today_signal_count"], "Win rate:", stats["win_rate_percentage"], "%")
 
-asyncio.run(export_snapshot())
+if __name__ == "__main__":
+    asyncio.run(export_snapshot())
+

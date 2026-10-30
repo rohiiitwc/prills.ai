@@ -148,12 +148,21 @@ export default function HomePage() {
       }
     }, 20000);
 
-    // Periodic status poll (every 15s) to guarantee UI stays synchronized with backend
-    const statusPollInterval = setInterval(() => {
-      fetchTelegramStatus().then(tg => {
-        if (tg) setTelegramStatus(tg);
+    // Dedicated sub-3-second auto-sync poller to guarantee real-time updates on time
+    const autoSyncInterval = setInterval(() => {
+      if (isUnmounted) return;
+      Promise.all([
+        fetchDashboardStats(),
+        fetchLatestSignals(),
+        fetchTelegramStatus()
+      ]).then(([sData, lData, tgData]) => {
+        if (!isUnmounted) {
+          if (sData) setStats(sData);
+          if (lData) setLatestData(lData);
+          if (tgData) setTelegramStatus(tgData);
+        }
       }).catch(() => {});
-    }, 15000);
+    }, 2500);
 
     // Periodic ticker (every 5 seconds) to transition any pending signals > 5m to UNKNOWN
     const timeoutTicker = setInterval(() => {
@@ -163,7 +172,7 @@ export default function HomePage() {
     return () => {
       isUnmounted = true;
       clearInterval(pingInterval);
-      clearInterval(statusPollInterval);
+      clearInterval(autoSyncInterval);
       clearInterval(timeoutTicker);
       if (reconnectTimeout) {
         clearTimeout(reconnectTimeout);
@@ -284,8 +293,8 @@ export default function HomePage() {
               <h2 className="text-2xl font-black text-white">Latest Announcments & Results</h2>
             </div>
             <div className="flex items-center gap-2">
-              <span className="text-xs text-slate-400 hidden sm:inline">Auto-Updates via WebSocket</span>
-              <div className="w-2.5 h-2.5 rounded-full bg-emerald-500 animate-ping"></div>
+              <span className="text-xs text-emerald-400 font-semibold hidden sm:inline">Auto-Synced with Telegram on Time</span>
+              <div className="w-2.5 h-2.5 rounded-full bg-emerald-500 animate-pulse"></div>
             </div>
           </div>
 

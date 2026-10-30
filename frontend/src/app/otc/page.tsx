@@ -134,15 +134,25 @@ export default function QuotexOtcPage() {
 
     connectWs();
 
-    const statusPollInterval = setInterval(() => {
-      fetchTelegramStatus().then(tg => {
-        if (tg) setTelegramStatus(tg);
+    const autoSyncInterval = setInterval(() => {
+      if (isUnmounted) return;
+      Promise.all([
+        fetchSignals({ ...filters, market: 'OTC' }),
+        fetchTelegramStatus(),
+        fetchDashboardStats()
+      ]).then(([data, tgStatus, sData]) => {
+        if (!isUnmounted) {
+          if (data && data.items) setSignalsData(data);
+          if (data && data.items.length > 0) setLatestSignal(data.items[0]);
+          if (tgStatus) setTelegramStatus(tgStatus);
+          if (sData) setStats(sData);
+        }
       }).catch(() => {});
-    }, 15000);
+    }, 2500);
 
     return () => {
       isUnmounted = true;
-      clearInterval(statusPollInterval);
+      clearInterval(autoSyncInterval);
       if (reconnectTimeout) clearTimeout(reconnectTimeout);
       if (wsRef.current) {
         wsRef.current.close();

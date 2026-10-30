@@ -206,15 +206,28 @@ function HistoryContent() {
 
     connectWs();
 
-    const statusPollInterval = setInterval(() => {
-      fetchTelegramStatus().then(tg => {
-        if (tg) setTelegramStatus(tg);
+    const autoSyncInterval = setInterval(() => {
+      if (isUnmounted) return;
+      Promise.all([
+        fetchSignals({ ...otcFilters, market: 'OTC' }),
+        fetchSignals({ ...liveFilters, market: 'LIVE' }),
+        fetchSignals(allFilters),
+        fetchTelegramStatus(),
+        fetchDashboardStats()
+      ]).then(([otc, live, all, tg, sData]) => {
+        if (!isUnmounted) {
+          if (otc) setOtcSignalsData(otc);
+          if (live) setLiveSignalsData(live);
+          if (all) setAllSignalsData(all);
+          if (tg) setTelegramStatus(tg);
+          if (sData) setStats(sData);
+        }
       }).catch(() => {});
-    }, 15000);
+    }, 5000);
 
     return () => {
       isUnmounted = true;
-      clearInterval(statusPollInterval);
+      clearInterval(autoSyncInterval);
       if (reconnectTimeout) clearTimeout(reconnectTimeout);
       if (wsRef.current) {
         wsRef.current.close();

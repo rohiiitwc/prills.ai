@@ -371,6 +371,13 @@ class TelegramService:
                 except Exception as t_err:
                     logger.debug(f"Watchdog pending timeout check notice: {t_err}")
 
+                # Automatically refresh snapshot every 15 seconds to sync website on time
+                try:
+                    from export_snapshot import export_snapshot
+                    await export_snapshot()
+                except Exception as s_err:
+                    logger.debug(f"Watchdog snapshot sync notice: {s_err}")
+
                 # Case 1: Client is not authorized or not connected, but we have credentials + session string
                 if not self.is_authorized or not self.client or not self.client.is_connected():
                     if self.api_id and self.api_hash:
