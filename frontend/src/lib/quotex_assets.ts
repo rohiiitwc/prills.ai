@@ -447,3 +447,4 @@ export function getQuotexPayout(asset: string): number {
 export function getQuotexBasePrice(asset: string): number {
   return getQuotexConfig(asset).basePrice;
 }
+

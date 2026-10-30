@@ -43,6 +43,7 @@ ALL_LIVE_CANDIDATES = [
 class AnalyzeRequest(BaseModel):
     market_category: str  # "OTC" or "LIVE"
     asset: Optional[str] = None
+    chart_only: Optional[bool] = False
 
 @router.post("/analyze")
 async def analyze_market(
@@ -51,6 +52,8 @@ async def analyze_market(
 ):
     """
     Executes educational technical examination across instruments.
+    If chart_only is True, returns live market candles & technical indicators
+    WITHOUT generating auto signals. Signal generation is strictly manual.
     If no pair is selected (or 'ALL' is passed), scans all Quotex pairs,
     evaluates indicators and multi-AI consensus, and selects the highest-confidence setup.
     """
@@ -64,6 +67,29 @@ async def analyze_market(
     # Check if user requested scanning all pairs (or didn't select a specific pair)
     raw_asset = (req.asset or "").strip().upper()
     is_scan_all = raw_asset in ["", "ALL", "AUTO", "NONE"]
+
+    # Live market chart telemetry only (strictly NO auto signal generation without user clicking)
+    if req.chart_only:
+        target_asset = raw_asset if (raw_asset and not is_scan_all) else ("USDINR-OTC" if category == "OTC" else "USDJPY")
+        candles = generate_candles_for_instrument(
+            asset=target_asset,
+            market_category=category,
+            count=30,
+            end_time=now_ist
+        )
+        indicators = calculate_technical_indicators(candles)
+        return {
+            "session_id": 0,
+            "market_category": category,
+            "asset": target_asset,
+            "timeframe": "1m",
+            "chart_data_source": "Quotex OTC Algorithmic Replay" if category == "OTC" else "Live Interbank FX Feed Replay",
+            "timestamp_ist": now_ist.strftime("%H:%M:%S IST"),
+            "candles": candles,
+            "indicators": indicators,
+            "upcoming_signal": None,
+            "quotex_trade_result": None
+        }
 
     if is_scan_all:
         candidate_pool = ALL_OTC_CANDIDATES if category == "OTC" else ALL_LIVE_CANDIDATES

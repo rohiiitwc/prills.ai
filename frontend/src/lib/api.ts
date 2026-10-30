@@ -340,7 +340,8 @@ export async function fetchAiLabHistory(params: {
 
 export async function generateAiLabAnalysis(
   market_category: 'OTC' | 'LIVE',
-  asset: string
+  asset: string,
+  chart_only: boolean = false
 ): Promise<AIAnalysisPayload> {
   const urls = [`${getApiBaseUrl()}/ai-lab/analyze`, '/api/v1/ai-lab/analyze'];
   
@@ -351,7 +352,7 @@ export async function generateAiLabAnalysis(
         headers: {
           'Content-Type': 'application/json'
         },
-        body: JSON.stringify({ market_category, asset })
+        body: JSON.stringify({ market_category, asset, chart_only })
       });
       const ct = res.headers.get('content-type') || '';
       if (res.ok && ct.includes('application/json')) {

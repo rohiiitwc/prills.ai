@@ -88,6 +88,19 @@ async def test_ai_lab_endpoints():
         assert live_data["asset"] == "EURCAD"
         assert live_data["quotex_trade_result"]["profit_percentage"] == 76
 
+        # 3. Chart-only request (Strictly NO auto-signal generation)
+        chart_res = await client.post("/api/v1/ai-lab/analyze", json={
+            "market_category": "OTC",
+            "asset": "USDINR-OTC",
+            "chart_only": True
+        })
+        assert chart_res.status_code == 200
+        chart_data = chart_res.json()
+        assert chart_data["upcoming_signal"] is None
+        assert chart_data["quotex_trade_result"] is None
+        assert len(chart_data["candles"]) == 30
+        assert chart_data["candles"][-1]["close"] > 100.0
+
         # 3. Stats endpoint
         stats_res = await client.get("/api/v1/ai-lab/stats")
         assert stats_res.status_code == 200

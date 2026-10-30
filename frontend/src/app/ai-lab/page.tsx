@@ -190,12 +190,13 @@ export default function AILabPage() {
   }, []);
 
   // Automatically load live candlestick telemetry as soon as a pair or tab is selected
+  // (Chart & Telemetry only: strictly NO auto signals generated without clicking "Generate Signals")
   useEffect(() => {
     let isMounted = true;
     const fetchPairTelemetry = async () => {
       try {
         const target = selectedAsset === 'ALL' ? (activeTab === 'OTC' ? 'USDINR-OTC' : 'USDJPY') : selectedAsset;
-        const data = await generateAiLabAnalysis(activeTab, target);
+        const data = await generateAiLabAnalysis(activeTab, target, true);
         if (isMounted) {
           setCurrentAnalysis(prev => {
             if (prev?.upcoming_signal && timingInfo.isTradeActive) {
@@ -205,7 +206,11 @@ export default function AILabPage() {
                 quotex_trade_result: prev.quotex_trade_result
               };
             }
-            return data;
+            return {
+              ...data,
+              upcoming_signal: undefined,
+              quotex_trade_result: undefined
+            };
           });
         }
       } catch (err) {
@@ -336,7 +341,7 @@ export default function AILabPage() {
       const startTime = Date.now();
       const durationMs = 30000;
       const targetAsset = selectedAsset === 'ALL' ? '' : selectedAsset;
-      const fetchPromise = generateAiLabAnalysis(activeTab, targetAsset);
+      const fetchPromise = generateAiLabAnalysis(activeTab, targetAsset, false);
 
       await new Promise<void>((resolve) => {
         const interval = setInterval(() => {

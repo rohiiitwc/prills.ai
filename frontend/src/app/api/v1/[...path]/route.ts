@@ -302,7 +302,14 @@ export async function POST(
   if (pathStr === 'ai-lab/analyze') {
     const market_category = (body?.market_category || 'OTC').toUpperCase();
     const rawAsset = (body?.asset || '').trim().toUpperCase();
+    const chartOnly = Boolean(body?.chart_only);
     const isScanAll = !rawAsset || rawAsset === 'ALL' || rawAsset === 'AUTO' || rawAsset === 'NONE';
+
+    if (chartOnly) {
+      const targetAsset = isScanAll ? (market_category === 'OTC' ? 'USDINR-OTC' : 'USDJPY') : rawAsset;
+      const res = await runServerlessAiAnalysis(market_category, targetAsset, false, true);
+      return NextResponse.json(res);
+    }
     const candidateList = market_category === 'OTC'
       ? [
           'USDINR-OTC', 'USDPKR-OTC', 'USDBRL-OTC', 'USDZAR-OTC', 'NZDCHF-OTC',
@@ -318,8 +325,8 @@ export async function POST(
       // Analyze ALL candidates across the market without stopping early
       const evaluatedList: any[] = [];
       for (const cand of candidateList) {
-        const res = await runServerlessAiAnalysis(market_category, cand, true);
-        const conf = res.upcoming_signal.confidence_percentage;
+        const res = await runServerlessAiAnalysis(market_category, cand, true, false);
+        const conf = res.upcoming_signal?.confidence_percentage ?? 0;
         const trend = res.indicators.primary_trend;
         const isQualified = conf >= 85.0 && (trend === 'BULLISH' || trend === 'BEARISH');
         const compositeScore = conf + (isQualified ? 10.0 : 0.0);
@@ -342,8 +349,10 @@ export async function POST(
       }
 
       const scannedNames = candidateList.join(', ');
-      chosen.upcoming_signal.model_consensus = `ALL-PAIRS QUOTEX SCANNER: Scanned all ${candidateList.length} ${market_category} pairs [${scannedNames}]. Selected ${chosen.asset} with highest technical confluence (${chosen.upcoming_signal.confidence_percentage}%). ` + chosen.ai_analysis.consensus_notes;
-      chosen.upcoming_signal.technical_trigger = `ALL-PAIRS SCANNER WINNER (${chosen.asset}): Selected among ${candidateList.length} scanned Quotex pairs | EMA 9 vs SMA 20 (${chosen.indicators.ema9} / ${chosen.indicators.sma20}) + RSI (${chosen.indicators.rsi}) + Pattern: ${chosen.indicators.pattern}`;
+      if (chosen.upcoming_signal) {
+        chosen.upcoming_signal.model_consensus = `ALL-PAIRS QUOTEX SCANNER: Scanned all ${candidateList.length} ${market_category} pairs [${scannedNames}]. Selected ${chosen.asset} with highest technical confluence (${chosen.upcoming_signal.confidence_percentage}%). ` + chosen.ai_analysis.consensus_notes;
+        chosen.upcoming_signal.technical_trigger = `ALL-PAIRS SCANNER WINNER (${chosen.asset}): Selected among ${candidateList.length} scanned Quotex pairs | EMA 9 vs SMA 20 (${chosen.indicators.ema9} / ${chosen.indicators.sma20}) + RSI (${chosen.indicators.rsi}) + Pattern: ${chosen.indicators.pattern}`;
+      }
 
       return NextResponse.json(chosen);
     }
@@ -704,7 +713,7 @@ async function fetchLiveForexBars(asset: string, count: number = 30): Promise<an
   return null;
 }
 
-async function runServerlessAiAnalysis(market_category: string, asset: string, isScanAll: boolean = false) {
+async function runServerlessAiAnalysis(market_category: string, asset: string, isScanAll: boolean = false, chartOnly: boolean = false) {
   const now = new Date();
   const isOtc = market_category === 'OTC';
   let basePrice = getBasePriceForAsset(asset);
@@ -805,6 +814,22 @@ async function runServerlessAiAnalysis(market_category: string, asset: string, i
     primary_trend,
     volatility_status: 'NORMAL'
   };
+
+  // Live market chart telemetry only (strictly NO auto signal generation without clicking)
+  if (chartOnly) {
+    return {
+      session_id: 0,
+      market_category,
+      asset,
+      timeframe: '1m',
+      chart_data_source: isOtc ? 'Quotex OTC Algorithmic Replay (Simulated Historical Data)' : 'Live Interbank FX Feed Replay (Educational Data)',
+      timestamp_ist: now.toLocaleTimeString('en-IN', { timeZone: 'Asia/Kolkata', hour12: false }) + ' IST',
+      candles,
+      indicators,
+      upcoming_signal: null,
+      quotex_trade_result: null
+    };
+  }
 
   // Simulated 1-minute candle replay (13 keyframe ticks)
   const ticks: any[] = [];

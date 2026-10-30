@@ -447,3 +447,4 @@ def get_quotex_payout(asset: str) -> int:
 
 def get_quotex_base_price(asset: str) -> float:
     return float(get_quotex_config(asset)["base_price"])
+
