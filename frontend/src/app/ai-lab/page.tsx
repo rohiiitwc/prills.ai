@@ -122,47 +122,13 @@ const OTC_INSTRUMENTS = [
 ];
 
 const LIVE_INSTRUMENTS = [
-  // --- Major Currencies (Quotex Live Market) ---
-  { symbol: 'EURUSD', name: 'EUR/USD (Spot Forex)' },
-  { symbol: 'GBPUSD', name: 'GBP/USD (Spot Forex)' },
-  { symbol: 'USDJPY', name: 'USD/JPY (Spot Forex)' },
-  { symbol: 'USDCHF', name: 'USD/CHF (Spot Forex)' },
-  { symbol: 'USDCAD', name: 'USD/CAD (Spot Forex)' },
-  { symbol: 'AUDUSD', name: 'AUD/USD (Spot Forex)' },
-  { symbol: 'NZDUSD', name: 'NZD/USD (Spot Forex)' },
-  { symbol: 'EURGBP', name: 'EUR/GBP (Spot Forex)' },
-  { symbol: 'EURJPY', name: 'EUR/JPY (Spot Forex)' },
-  { symbol: 'GBPJPY', name: 'GBP/JPY (Spot Forex)' },
-  { symbol: 'AUDCAD', name: 'AUD/CAD (Spot Forex)' },
-  { symbol: 'AUDCHF', name: 'AUD/CHF (Spot Forex)' },
-  { symbol: 'AUDJPY', name: 'AUD/JPY (Spot Forex)' },
-  { symbol: 'AUDNZD', name: 'AUD/NZD (Spot Forex)' },
-  { symbol: 'CADCHF', name: 'CAD/CHF (Spot Forex)' },
-  { symbol: 'CADJPY', name: 'CAD/JPY (Spot Forex)' },
-  { symbol: 'CHFJPY', name: 'CHF/JPY (Spot Forex)' },
-  { symbol: 'EURAUD', name: 'EUR/AUD (Spot Forex)' },
-  { symbol: 'EURCAD', name: 'EUR/CAD (Spot Forex)' },
-  { symbol: 'EURCHF', name: 'EUR/CHF (Spot Forex)' },
-  { symbol: 'EURNZD', name: 'EUR/NZD (Spot Forex)' },
-  { symbol: 'GBPAUD', name: 'GBP/AUD (Spot Forex)' },
-  { symbol: 'GBPCAD', name: 'GBP/CAD (Spot Forex)' },
-  { symbol: 'GBPCHF', name: 'GBP/CHF (Spot Forex)' },
-  { symbol: 'GBPNZD', name: 'GBP/NZD (Spot Forex)' },
-  { symbol: 'NZDCAD', name: 'NZD/CAD (Spot Forex)' },
-  { symbol: 'NZDCHF', name: 'NZD/CHF (Spot Forex)' },
-  { symbol: 'NZDJPY', name: 'NZD/JPY (Spot Forex)' },
-  // --- Commodities & Crypto (Quotex Live Market) ---
-  { symbol: 'XAUUSD', name: 'Gold / USD (Spot Forex)' },
-  { symbol: 'XAGUSD', name: 'Silver / USD (Spot Forex)' },
-  { symbol: 'USOIL', name: 'US Crude Oil (Spot Forex)' },
-  { symbol: 'UKBRENT', name: 'UK Brent Crude (Spot Forex)' },
-  { symbol: 'BTCUSD', name: 'Bitcoin / USD (Crypto)' },
-  { symbol: 'ETHUSD', name: 'Ethereum / USD (Crypto)' },
+  // --- Exclusive Live Market Pairs (Non-OTC pairs NOT presented in the OTC section) ---
+  { symbol: 'AUDCAD', name: 'AUD/CAD (Quotex Live Market Exclusive)' },
 ];
 
 export default function AILabPage() {
   const [activeTab, setActiveTab] = useState<'OTC' | 'LIVE'>('OTC');
-  const [selectedAsset, setSelectedAsset] = useState<string>('EURUSD-OTC');
+  const [selectedAsset, setSelectedAsset] = useState<string>('ALL');
   const [stats, setStats] = useState<AILabStats | null>(null);
   const [currentAnalysis, setCurrentAnalysis] = useState<AIAnalysisPayload | null>(null);
   const [historyItems, setHistoryItems] = useState<AILabHistoryItem[]>([]);
@@ -203,13 +169,9 @@ export default function AILabPage() {
     loadHistory(activeTab);
   }, []);
 
-  // Update selected asset when tab changes
+  // Update selected asset when tab changes (defaults to ALL pairs scan)
   useEffect(() => {
-    if (activeTab === 'OTC') {
-      setSelectedAsset('EURUSD-OTC');
-    } else {
-      setSelectedAsset('EURUSD');
-    }
+    setSelectedAsset('ALL');
     setHistoryFilterAsset('ALL');
     loadHistory(activeTab);
   }, [activeTab]);
@@ -300,7 +262,8 @@ export default function AILabPage() {
       // Run dedicated 30-second analyzing progress
       const startTime = Date.now();
       const durationMs = 30000;
-      const fetchPromise = generateAiLabAnalysis(activeTab, selectedAsset);
+      const targetAsset = selectedAsset === 'ALL' ? '' : selectedAsset;
+      const fetchPromise = generateAiLabAnalysis(activeTab, targetAsset);
 
       await new Promise<void>((resolve) => {
         const interval = setInterval(() => {
@@ -308,14 +271,26 @@ export default function AILabPage() {
           const remaining = Math.max(0, Math.ceil((durationMs - elapsed) / 1000));
           setAnalysisSecondsLeft(remaining);
 
-          if (remaining > 22) {
-            setAnalysisStep(`[Step 1/4] Extracting 1-minute candlestick telemetry for ${selectedAsset} on Quotex...`);
-          } else if (remaining > 15) {
-            setAnalysisStep(`[Step 2/4] Evaluating Price Action, RSI (14), EMA 9 vs SMA 20, and Bollinger Bands...`);
-          } else if (remaining > 7) {
-            setAnalysisStep(`[Step 3/4] Requesting Tri-Model Consensus from OpenAI, Google Gemini, and Groq...`);
+          if (selectedAsset === 'ALL') {
+            if (remaining > 22) {
+              setAnalysisStep(`[Step 1/4] Scanning all ${activeTab === 'OTC' ? 'Quotex OTC' : 'Live'} pairs candlestick telemetry across platform...`);
+            } else if (remaining > 15) {
+              setAnalysisStep(`[Step 2/4] Evaluating RSI (14), Moving Averages (EMA 9/SMA 20) & Bollinger Bands across all pairs...`);
+            } else if (remaining > 7) {
+              setAnalysisStep(`[Step 3/4] Requesting Tri-Model Consensus (OpenAI, Gemini, Groq) to find strongest setup...`);
+            } else {
+              setAnalysisStep(`[Step 4/4] Selecting highest confidence trade (>=85%) and locking entry time at :00 IST...`);
+            }
           } else {
-            setAnalysisStep(`[Step 4/4] Verifying 85% Minimum Confidence Gate & Formatting Entry Time (HH:MM:00 IST)...`);
+            if (remaining > 22) {
+              setAnalysisStep(`[Step 1/4] Extracting 1-minute candlestick telemetry for ${selectedAsset} on Quotex...`);
+            } else if (remaining > 15) {
+              setAnalysisStep(`[Step 2/4] Evaluating Price Action, RSI (14), EMA 9 vs SMA 20, and Bollinger Bands...`);
+            } else if (remaining > 7) {
+              setAnalysisStep(`[Step 3/4] Requesting Tri-Model Consensus from OpenAI, Google Gemini, and Groq...`);
+            } else {
+              setAnalysisStep(`[Step 4/4] Verifying 85% Minimum Confidence Gate & Formatting Entry Time (HH:MM:00 IST)...`);
+            }
           }
 
           if (remaining <= 0) {
@@ -515,7 +490,7 @@ export default function AILabPage() {
 
                   <div>
                     <span className="text-xs font-mono uppercase tracking-widest text-slate-400 font-bold block mb-1">
-                      EXAMINING {selectedAsset} ({activeTab === 'OTC' ? 'QUOTEX OTC' : 'SPOT FOREX'})
+                      EXAMINING {selectedAsset === 'ALL' ? (`ALL ${activeTab === 'OTC' ? 'QUOTEX OTC' : 'SPOT FOREX'} PAIRS`) : selectedAsset}
                     </span>
                     <h2 className="text-2xl sm:text-3xl font-black text-white">
                       AI Tri-Engine Telemetry Scan
@@ -539,7 +514,7 @@ export default function AILabPage() {
 
                   {/* Step description */}
                   <div className="p-3.5 rounded-2xl bg-slate-900/90 border border-cyan-800/40 text-xs font-mono font-bold text-cyan-300 animate-pulse">
-                    {analysisStep || `Evaluating 1-minute candlestick telemetry for ${selectedAsset}...`}
+                    {analysisStep || (selectedAsset === 'ALL' ? 'Evaluating candlestick telemetry across all Quotex pairs...' : `Evaluating 1-minute candlestick telemetry for ${selectedAsset}...`)}
                   </div>
 
                   <p className="text-[11px] text-slate-500">
@@ -976,6 +951,7 @@ export default function AILabPage() {
                           : 'border-slate-700/80 focus:border-cyan-400 cursor-pointer'
                       }`}
                     >
+                      <option value="ALL">⭐ ALL PAIRS (Auto-Scan Quotex for Highest Confidence Signal)</option>
                       {(activeTab === 'OTC' ? OTC_INSTRUMENTS : LIVE_INSTRUMENTS).map(inst => (
                         <option key={inst.symbol} value={inst.symbol}>
                           {inst.symbol}
@@ -1011,9 +987,9 @@ export default function AILabPage() {
                         ? `Analyzing Chart (${analysisSecondsLeft}s)...` 
                         : timingInfo.isTradeActive 
                         ? `TRADE RUNNING ON QUOTEX (${timingInfo.secondsRemainingToCompletion}s REMAINING)` 
-                        : activeTab === 'OTC' 
-                        ? 'GENERATE OTC SIGNAL (30s ANALYSIS)' 
-                        : 'GENERATE LIVE SIGNAL (30s ANALYSIS)'}
+                        : selectedAsset === 'ALL'
+                        ? `SCAN ALL ${activeTab} PAIRS FOR SIGNAL (30s)`
+                        : `GENERATE ${selectedAsset} SIGNAL (30s)`}
                     </span>
                   </button>
                 </div>
@@ -1052,7 +1028,7 @@ export default function AILabPage() {
                   <div className="flex items-center gap-2">
                     <BarChart3 className="w-4 h-4 text-cyan-400" />
                     <h3 className="text-sm font-bold text-white">
-                      1-Minute Candlestick Chart Structure ({selectedAsset})
+                      1-Minute Candlestick Chart Structure ({currentAnalysis?.asset || (selectedAsset === 'ALL' ? (activeTab === 'OTC' ? 'EURUSD-OTC' : 'AUDCAD') : selectedAsset)})
                     </h3>
                   </div>
                   <div className="flex items-center gap-3 text-[11px] font-mono text-slate-400">
@@ -1402,7 +1378,7 @@ export default function AILabPage() {
                     INDEPENDENT ENGINE VERIFICATION
                   </span>
                   <h2 className="text-xl font-black text-white">
-                    Tri-Model AI Explanations ({selectedAsset})
+                    Tri-Model AI Explanations ({currentAnalysis?.asset || (selectedAsset === 'ALL' ? (activeTab === 'OTC' ? 'EURUSD-OTC' : 'AUDCAD') : selectedAsset)})
                   </h2>
                 </div>
                 <span className="text-xs text-slate-500 hidden sm:inline">

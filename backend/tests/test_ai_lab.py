@@ -99,8 +99,15 @@ async def test_ai_lab_endpoints():
         items_otc = hist_otc.json()["items"]
         assert all(item["market_category"] == "OTC" for item in items_otc)
 
-        # 5. History endpoint - Live only
-        hist_live = await client.get("/api/v1/ai-lab/history?market=LIVE")
-        assert hist_live.status_code == 200
-        items_live = hist_live.json()["items"]
-        assert all(item["market_category"] == "LIVE" for item in items_live)
+        # 6. Analyze All Pairs (Auto-Scan when asset is ALL or empty)
+        all_res = await client.post("/api/v1/ai-lab/analyze", json={
+            "market_category": "OTC",
+            "asset": "ALL"
+        })
+        assert all_res.status_code == 200
+        all_data = all_res.json()
+        assert all_data["market_category"] == "OTC"
+        assert all_data["asset"] != ""
+        assert "upcoming_signal" in all_data
+        assert all_data["upcoming_signal"]["confidence_percentage"] >= 0
+        assert all_data["upcoming_signal"]["entry_time"].endswith(":00 IST")

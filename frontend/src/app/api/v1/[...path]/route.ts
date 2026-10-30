@@ -300,8 +300,28 @@ export async function POST(
   // AI Learning Lab Analyze Fallback
   if (pathStr === 'ai-lab/analyze') {
     const market_category = (body?.market_category || 'OTC').toUpperCase();
-    const asset = (body?.asset || (market_category === 'OTC' ? 'EURUSD-OTC' : 'EURUSD')).toUpperCase();
-    const result = runServerlessAiAnalysis(market_category, asset);
+    const rawAsset = (body?.asset || '').trim().toUpperCase();
+    const isScanAll = !rawAsset || rawAsset === 'ALL' || rawAsset === 'AUTO' || rawAsset === 'NONE';
+    const candidateList = market_category === 'OTC'
+      ? ['EURUSD-OTC', 'USDINR-OTC', 'GBPUSD-OTC', 'USDJPY-OTC', 'USDBDT-OTC', 'USDCAD-OTC', 'USDCHF-OTC', 'EURJPY-OTC', 'GBPJPY-OTC', 'USDTRY-OTC', 'XAUUSD-OTC', 'BTCUSD-OTC', 'AAPL-OTC']
+      : ['AUDCAD'];
+
+    if (isScanAll) {
+      let bestResult: any = null;
+      for (const cand of candidateList) {
+        const res = runServerlessAiAnalysis(market_category, cand, true);
+        if (!bestResult || res.upcoming_signal.confidence_percentage > bestResult.upcoming_signal.confidence_percentage) {
+          bestResult = res;
+        }
+        if (res.upcoming_signal.confidence_percentage >= 88.0) {
+          bestResult = res;
+          break;
+        }
+      }
+      return NextResponse.json(bestResult || runServerlessAiAnalysis(market_category, 'EURUSD-OTC', true));
+    }
+
+    const result = runServerlessAiAnalysis(market_category, rawAsset, false);
     return NextResponse.json(result);
   }
 
@@ -546,7 +566,7 @@ function roundPriceForAsset(price: number, basePrice: number): number {
   return Math.round(price * 100000) / 100000;
 }
 
-function runServerlessAiAnalysis(market_category: string, asset: string) {
+function runServerlessAiAnalysis(market_category: string, asset: string, isScanAll: boolean = false) {
   const isOtc = market_category === 'OTC';
   const basePrice = getBasePriceForAsset(asset);
   const volatility = basePrice * 0.00035;
@@ -733,9 +753,17 @@ function runServerlessAiAnalysis(market_category: string, asset: string) {
       expiry_duration: '1 Minutes',
       strike_price: lastClose,
       confidence_percentage: confidencePct,
-      model_consensus: ai_analysis.consensus_notes,
-      technical_trigger: `EMA 9 vs SMA 20 (${ema9} / ${sma20}) + RSI (${rsi}) + Pattern: ${pattern}`,
-      quotex_execution_notes: executionNotes
+      model_consensus: isScanAll
+        ? `ALL-PAIRS QUOTEX SCANNER: Analyzed market pairs. Selected ${asset} with highest technical confluence (${confidencePct}%). ` + ai_analysis.consensus_notes
+        : ai_analysis.consensus_notes,
+      technical_trigger: isScanAll
+        ? `ALL-PAIRS SCANNER WINNER: Selected ${asset} with highest confluence | EMA 9 vs SMA 20 (${ema9} / ${sma20}) + RSI (${rsi}) + Pattern: ${pattern}`
+        : `EMA 9 vs SMA 20 (${ema9} / ${sma20}) + RSI (${rsi}) + Pattern: ${pattern}`,
+      quotex_execution_notes: isScanAll
+        ? (isQualified
+          ? `Market Scan Winner (${confidencePct}% >= 85%). Enter trade on Quotex platform at exactly ${entryTimeIst} with 1-Minute expiry.`
+          : `All Quotex pairs scanned. Best candidate (${asset}) reached ${confidencePct}% (below 85% requirement). Market consolidation detected. DO NOT TAKE THIS TRADE.`)
+        : executionNotes
     },
     simulated_outcome: {
       prediction,

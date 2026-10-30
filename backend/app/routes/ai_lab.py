@@ -20,6 +20,19 @@ from backend.app.ai_lab.ai_providers import generate_multi_provider_analysis
 
 router = APIRouter(prefix="/ai-lab", tags=["ai-lab"])
 
+# Full Quotex pairs catalogs for all-pairs market scanning
+ALL_OTC_CANDIDATES = [
+    "EURUSD-OTC", "USDINR-OTC", "GBPUSD-OTC", "USDJPY-OTC", "USDBDT-OTC",
+    "USDCAD-OTC", "USDCHF-OTC", "EURJPY-OTC", "GBPJPY-OTC", "USDTRY-OTC",
+    "USDPKR-OTC", "USDMXN-OTC", "USDNGN-OTC", "USDBRL-OTC", "AUDUSD-OTC",
+    "NZDUSD-OTC", "XAUUSD-OTC", "BTCUSD-OTC", "ETHUSD-OTC", "AAPL-OTC",
+    "MSFT-OTC", "US500-OTC", "US30-OTC", "US100-OTC", "GER40-OTC"
+]
+
+ALL_LIVE_CANDIDATES = [
+    "AUDCAD"
+]
+
 class AnalyzeRequest(BaseModel):
     market_category: str  # "OTC" or "LIVE"
     asset: Optional[str] = None
@@ -30,40 +43,78 @@ async def analyze_market(
     db: AsyncSession = Depends(get_db)
 ):
     """
-    Executes educational technical examination of an instrument across
-    OpenAI, Gemini, and Groq, with candlestick simulation and outcome tracking.
+    Executes educational technical examination across instruments.
+    If no pair is selected (or 'ALL' is passed), scans all Quotex pairs,
+    evaluates indicators and multi-AI consensus, and selects the highest-confidence setup.
     """
     category = req.market_category.upper()
     if category not in ["OTC", "LIVE"]:
         category = "OTC"
 
-    # Default asset if none provided
-    if not req.asset:
-        asset = "EURUSD-OTC" if category == "OTC" else "EURUSD"
-    else:
-        asset = req.asset.strip().upper()
-
     now_ist = get_ist_now()
     now_utc = datetime.now(timezone.utc)
 
-    # 1. Generate 30 1-minute historical/simulated educational candles
-    candles = generate_candles_for_instrument(
-        asset=asset,
-        market_category=category,
-        count=30,
-        end_time=now_ist
-    )
+    # Check if user requested scanning all pairs (or didn't select a specific pair)
+    raw_asset = (req.asset or "").strip().upper()
+    is_scan_all = raw_asset in ["", "ALL", "AUTO", "NONE"]
 
-    # 2. Calculate technical indicators
-    indicators = calculate_technical_indicators(candles)
+    if is_scan_all:
+        candidate_pool = ALL_OTC_CANDIDATES if category == "OTC" else ALL_LIVE_CANDIDATES
+        evaluated = []
 
-    # 3. Request multi-AI provider educational analysis
-    ai_analysis = await generate_multi_provider_analysis(
-        asset=asset,
-        market_category=category,
-        indicators=indicators,
-        candles=candles
-    )
+        for cand_asset in candidate_pool:
+            cand_candles = generate_candles_for_instrument(
+                asset=cand_asset,
+                market_category=category,
+                count=30,
+                end_time=now_ist
+            )
+            cand_ind = calculate_technical_indicators(cand_candles)
+            cand_analysis = await generate_multi_provider_analysis(
+                asset=cand_asset,
+                market_category=category,
+                indicators=cand_ind,
+                candles=cand_candles
+            )
+            cand_conf = round(
+                sum(p["confidence_score"] for p in cand_analysis["providers"].values()) / max(1, len(cand_analysis["providers"])),
+                1
+            )
+            # Prioritize qualified trades (>= 85%) and strong directional bias
+            score = cand_conf + (10.0 if (cand_conf >= 85.0 and cand_analysis["consensus_trend"] in ["BULLISH", "BEARISH"]) else 0.0)
+            evaluated.append((score, cand_conf, cand_asset, cand_candles, cand_ind, cand_analysis))
+
+            # If we find a high-conviction trade (>= 88.5%), prioritize it
+            if cand_conf >= 88.5 and cand_analysis["consensus_trend"] in ["BULLISH", "BEARISH"]:
+                break
+
+        # Sort to pick highest scoring / highest confidence setup
+        evaluated.sort(key=lambda x: x[0], reverse=True)
+        best = evaluated[0]
+        confidence_pct = best[1]
+        asset = best[2]
+        candles = best[3]
+        indicators = best[4]
+        ai_analysis = best[5]
+    else:
+        asset = raw_asset
+        candles = generate_candles_for_instrument(
+            asset=asset,
+            market_category=category,
+            count=30,
+            end_time=now_ist
+        )
+        indicators = calculate_technical_indicators(candles)
+        ai_analysis = await generate_multi_provider_analysis(
+            asset=asset,
+            market_category=category,
+            indicators=indicators,
+            candles=candles
+        )
+        confidence_pct = round(
+            sum(p["confidence_score"] for p in ai_analysis["providers"].values()) / max(1, len(ai_analysis["providers"])),
+            1
+        )
 
     # 4. Generate 1-minute simulated replay candle
     current_price = candles[-1]["close"]
@@ -180,11 +231,15 @@ async def analyze_market(
             "strike_price": current_price,
             "confidence_percentage": confidence_pct,
             "model_consensus": ai_analysis["consensus_notes"],
-            "technical_trigger": f"EMA 9 vs SMA 20 ({indicators['ema9']} / {indicators['sma20']}) + RSI ({indicators['rsi']}) + Pattern: {indicators['pattern']}",
+            "technical_trigger": (
+                f"ALL-PAIRS SCANNER WINNER: Selected {asset} among {len(candidate_pool)} scanned Quotex pairs | EMA 9 vs SMA 20 ({indicators['ema9']} / {indicators['sma20']}) + RSI ({indicators['rsi']}) + Pattern: {indicators['pattern']}"
+                if is_scan_all
+                else f"EMA 9 vs SMA 20 ({indicators['ema9']} / {indicators['sma20']}) + RSI ({indicators['rsi']}) + Pattern: {indicators['pattern']}"
+            ),
             "quotex_execution_notes": (
-                f"High Confidence Confluence ({confidence_pct}% >= 85%). Enter trade on Quotex platform at exactly {entry_time_str} with 1-Minute expiry."
+                f"Market Scan Winner ({confidence_pct}% >= 85%). Enter trade on Quotex demo/real platform at exactly {entry_time_str} with 1-Minute expiry."
                 if (confidence_pct >= 85.0 and ai_analysis["consensus_trend"] in ["BULLISH", "BEARISH"])
-                else f"AI confidence is {confidence_pct}% (below 85% threshold). Market consolidation or conflicting indicators detected on Quotex. DO NOT TAKE THIS TRADE."
+                else f"All Quotex pairs scanned. Best candidate ({asset}) reached {confidence_pct}% (below 85% requirement). Market consolidation or conflicting indicators detected on Quotex. DO NOT TAKE THIS TRADE."
             )
         },
         "simulated_outcome": {
