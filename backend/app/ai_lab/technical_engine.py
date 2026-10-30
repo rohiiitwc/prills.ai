@@ -52,13 +52,32 @@ INSTRUMENT_BASE_PRICES = {
     "NZDJPY-OTC": 91.050,
     "NZDCAD-OTC": 0.83020,
     "NZDCHF-OTC": 0.51700,
-    # --- Quotex 24/7 OTC Commodities & Crypto ---
+    # --- Quotex 24/7 OTC Commodities & Crypto (https://quotex.com/en/demo-trade) ---
     "XAUUSD-OTC": 2745.50,
     "XAGUSD-OTC": 33.80,
     "USCRUDE-OTC": 69.25,
     "UKBRENT-OTC": 73.10,
     "BTCUSD-OTC": 71850.00,
     "ETHUSD-OTC": 2640.00,
+    # --- Quotex 24/7 OTC Stocks & Indices (https://quotex.com/en/demo-trade) ---
+    "AAPL-OTC": 232.50,
+    "MSFT-OTC": 435.80,
+    "AMZN-OTC": 188.20,
+    "GOOGL-OTC": 178.60,
+    "TSLA-OTC": 260.40,
+    "META-OTC": 585.50,
+    "NFLX-OTC": 750.20,
+    "NVDA-OTC": 141.50,
+    "BA-OTC": 156.40,
+    "INTC-OTC": 22.80,
+    "PFE-OTC": 28.60,
+    "JNJ-OTC": 161.20,
+    "MCD-OTC": 295.40,
+    "US500-OTC": 5810.00,
+    "US30-OTC": 42300.00,
+    "US100-OTC": 20450.00,
+    "GER40-OTC": 19450.00,
+    "UK100-OTC": 8240.00,
     # --- Quotex Live Market Instruments ---
     "EURUSD": 1.08580,
     "GBPUSD": 1.29800,
@@ -118,6 +137,34 @@ def get_base_price_for_asset(asset: str) -> float:
         return 152.0
     if "INR" in upper:
         return 84.15
+    if "US30" in upper:
+        return 42300.0
+    if "US100" in upper or "NDX" in upper or "NAS" in upper:
+        return 20450.0
+    if "GER40" in upper or "DAX" in upper:
+        return 19450.0
+    if "US500" in upper or "SPX" in upper:
+        return 5810.0
+    if "UK100" in upper or "FTSE" in upper:
+        return 8240.0
+    if "AAPL" in upper:
+        return 232.50
+    if "MSFT" in upper:
+        return 435.80
+    if "AMZN" in upper:
+        return 188.20
+    if "GOOGL" in upper:
+        return 178.60
+    if "TSLA" in upper:
+        return 260.40
+    if "META" in upper:
+        return 585.50
+    if "NFLX" in upper:
+        return 750.20
+    if "NVDA" in upper:
+        return 141.50
+    if "BA" in upper:
+        return 156.40
     if "OIL" in upper or "CRUDE" in upper or "BRENT" in upper:
         return 70.0
     return 1.0850

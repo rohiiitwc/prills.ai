@@ -55,7 +55,7 @@ class Settings(BaseSettings):
     GROQ_API_KEY: str = Field(default="")
     
     # Quotex Secure References (Server-Side Only)
-    QUOTEX_LINK: str = Field(default="https://quotex.com/en/trade")
+    QUOTEX_LINK: str = Field(default="https://quotex.com/en/demo-trade")
     QUOTEX_EMAIL: str = Field(default="")
     QUOTEX_PASSWORD: str = Field(default="")
     

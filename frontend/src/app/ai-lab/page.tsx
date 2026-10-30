@@ -99,6 +99,26 @@ const OTC_INSTRUMENTS = [
   { symbol: 'UKBRENT-OTC', name: 'UK Brent Oil (Quotex OTC)' },
   { symbol: 'BTCUSD-OTC', name: 'Bitcoin / USD (Quotex OTC)' },
   { symbol: 'ETHUSD-OTC', name: 'Ethereum / USD (Quotex OTC)' },
+  // --- Stocks (Quotex OTC - https://quotex.com/en/demo-trade) ---
+  { symbol: 'AAPL-OTC', name: 'Apple Inc (Quotex OTC)' },
+  { symbol: 'MSFT-OTC', name: 'Microsoft (Quotex OTC)' },
+  { symbol: 'AMZN-OTC', name: 'Amazon (Quotex OTC)' },
+  { symbol: 'GOOGL-OTC', name: 'Alphabet Google (Quotex OTC)' },
+  { symbol: 'TSLA-OTC', name: 'Tesla (Quotex OTC)' },
+  { symbol: 'META-OTC', name: 'Meta Platforms (Quotex OTC)' },
+  { symbol: 'NFLX-OTC', name: 'Netflix (Quotex OTC)' },
+  { symbol: 'NVDA-OTC', name: 'NVIDIA (Quotex OTC)' },
+  { symbol: 'BA-OTC', name: 'Boeing (Quotex OTC)' },
+  { symbol: 'INTC-OTC', name: 'Intel (Quotex OTC)' },
+  { symbol: 'PFE-OTC', name: 'Pfizer (Quotex OTC)' },
+  { symbol: 'JNJ-OTC', name: 'Johnson & Johnson (Quotex OTC)' },
+  { symbol: 'MCD-OTC', name: "McDonald's (Quotex OTC)" },
+  // --- Indices (Quotex OTC - https://quotex.com/en/demo-trade) ---
+  { symbol: 'US500-OTC', name: 'S&P 500 Index (Quotex OTC)' },
+  { symbol: 'US30-OTC', name: 'Dow Jones 30 (Quotex OTC)' },
+  { symbol: 'US100-OTC', name: 'Nasdaq 100 (Quotex OTC)' },
+  { symbol: 'GER40-OTC', name: 'DAX 40 Germany (Quotex OTC)' },
+  { symbol: 'UK100-OTC', name: 'FTSE 100 UK (Quotex OTC)' },
 ];
 
 const LIVE_INSTRUMENTS = [
@@ -212,9 +232,65 @@ export default function AILabPage() {
     }
   };
 
-  // Main generator function: takes 30 seconds to analyze Quotex platform charts (Strictly Manual)
+  // Compute countdown metrics for Upcoming Signal
+  const upcomingSignal = currentAnalysis?.upcoming_signal;
+
+  const timingInfo = useMemo(() => {
+    const currentSeconds = now.getSeconds();
+
+    let secondsToEntry = 0;
+    let isEntryDue = false;
+    let isTradeInFlight = false;
+    let isSettled = false;
+    let secondsRemainingToCompletion = 0;
+
+    if (upcomingSignal?.entry_time_raw) {
+      const entryDate = new Date(upcomingSignal.entry_time_raw);
+      const diffMs = entryDate.getTime() - now.getTime();
+      const diffSec = Math.floor(diffMs / 1000);
+
+      if (diffSec > 0) {
+        // Still in pre-entry countdown (e.g. 30s to 1s)
+        secondsToEntry = diffSec;
+        secondsRemainingToCompletion = diffSec + 60; // 30s pre-entry + 60s 1-minute candle
+      } else if (diffSec <= 0 && diffSec >= -60) {
+        // Trade entered! It is actively running on Quotex for 1 minute
+        isEntryDue = diffSec >= -5; // First 5 seconds show "ENTER TRADE NOW!"
+        isTradeInFlight = true;
+        secondsToEntry = 0;
+        secondsRemainingToCompletion = 60 + diffSec;
+      } else {
+        // Settled: trade completed
+        isSettled = true;
+        secondsRemainingToCompletion = 0;
+      }
+    }
+
+    const isTradeActive = Boolean(
+      upcomingSignal &&
+      upcomingSignal.trade_status === 'QUALIFIED_TRADE' &&
+      !isSettled &&
+      secondsRemainingToCompletion > 0
+    );
+
+    return {
+      currentSeconds,
+      secondsToEntry,
+      isEntryDue,
+      isTradeInFlight,
+      isSettled,
+      isTradeActive,
+      secondsRemainingToCompletion
+    };
+  }, [now, upcomingSignal]);
+
+  // Main generator function: takes 30 seconds to analyze Quotex platform charts (Strictly Manual & Locked during trade)
   const executeAnalysis = async () => {
     if (isAnalyzing) return;
+    if (timingInfo.isTradeActive) {
+      setErrorMsg(`A trade is currently active on Quotex for ${upcomingSignal?.asset}. Please wait until this trade completes (${timingInfo.secondsRemainingToCompletion}s remaining) before generating a new signal.`);
+      return;
+    }
     setIsAnalyzing(true);
     setErrorMsg(null);
     setIsPlayingReplay(false);
@@ -264,46 +340,6 @@ export default function AILabPage() {
       setAnalysisSecondsLeft(30);
     }
   };
-
-  // Compute countdown metrics for Upcoming Signal
-  const upcomingSignal = currentAnalysis?.upcoming_signal;
-
-  const timingInfo = useMemo(() => {
-    const currentSeconds = now.getSeconds();
-
-    // If an upcoming signal is active, compute time to its entry
-    let secondsToEntry = 0;
-    let isEntryDue = false;
-    let isTradeInFlight = false;
-    let isSettled = false;
-
-    if (upcomingSignal?.entry_time_raw) {
-      const entryDate = new Date(upcomingSignal.entry_time_raw);
-      const diffMs = entryDate.getTime() - now.getTime();
-      const diffSec = Math.floor(diffMs / 1000);
-
-      if (diffSec > 0) {
-        // Still in pre-entry countdown (e.g. 30s to 1s)
-        secondsToEntry = diffSec;
-      } else if (diffSec <= 0 && diffSec >= -60) {
-        // Trade entered! It is currently running for 1 minute
-        isEntryDue = diffSec >= -5; // First 5 seconds show "ENTER TRADE NOW!"
-        isTradeInFlight = true;
-        secondsToEntry = 0;
-      } else {
-        // Settled
-        isSettled = true;
-      }
-    }
-
-    return {
-      currentSeconds,
-      secondsToEntry,
-      isEntryDue,
-      isTradeInFlight,
-      isSettled
-    };
-  }, [now, upcomingSignal]);
 
   // Replay animation timer for simulated candle
   useEffect(() => {
@@ -391,12 +427,12 @@ export default function AILabPage() {
               {/* Quotex Quick Platform Launcher & Disclaimer */}
               <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-3">
                 <a
-                  href="https://quotex.com/en/trade"
+                  href="https://quotex.com/en/demo-trade"
                   target="_blank"
                   rel="noopener noreferrer"
                   className="px-4 py-2.5 rounded-xl bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-500 hover:to-teal-500 text-white text-xs font-black uppercase tracking-wider shadow-lg shadow-emerald-900/30 flex items-center justify-center gap-2 transition-all cursor-pointer group"
                 >
-                  <span>Open Quotex Platform</span>
+                  <span>Open Quotex Demo Platform</span>
                   <ExternalLink className="w-3.5 h-3.5 group-hover:translate-x-0.5 group-hover:-translate-y-0.5 transition-transform" />
                 </a>
 
@@ -817,11 +853,23 @@ export default function AILabPage() {
                     <button
                       type="button"
                       onClick={() => executeAnalysis()}
-                      disabled={isAnalyzing}
-                      className="px-6 py-3.5 rounded-xl text-xs font-black uppercase tracking-wider bg-gradient-to-r from-cyan-500 via-blue-600 to-cyan-500 hover:from-cyan-400 hover:to-blue-500 text-slate-950 font-black shadow-lg shadow-cyan-500/25 active:scale-95 transition-all flex items-center justify-center gap-2 cursor-pointer"
+                      disabled={isAnalyzing || timingInfo.isTradeActive}
+                      className={`px-6 py-3.5 rounded-xl text-xs font-black uppercase tracking-wider transition-all flex items-center justify-center gap-2 ${
+                        isAnalyzing
+                          ? 'bg-slate-800 text-slate-400 cursor-wait'
+                          : timingInfo.isTradeActive
+                          ? 'bg-amber-950/80 border border-amber-600/60 text-amber-300 cursor-not-allowed shadow-none'
+                          : 'bg-gradient-to-r from-cyan-500 via-blue-600 to-cyan-500 hover:from-cyan-400 hover:to-blue-500 text-slate-950 font-black shadow-lg shadow-cyan-500/25 active:scale-95 cursor-pointer'
+                      }`}
                     >
                       <Zap className="w-4 h-4 fill-current" />
-                      <span>{isAnalyzing ? `Analyzing Chart (${analysisSecondsLeft}s)...` : `GENERATE ${activeTab} SIGNAL (30s ANALYSIS)`}</span>
+                      <span>
+                        {isAnalyzing 
+                          ? `Analyzing Chart (${analysisSecondsLeft}s)...` 
+                          : timingInfo.isTradeActive 
+                          ? `TRADE IN PROGRESS (${timingInfo.secondsRemainingToCompletion}s TO COMPLETION)` 
+                          : `GENERATE ${activeTab} SIGNAL (30s ANALYSIS)`}
+                      </span>
                     </button>
                   </div>
                 </div>
@@ -921,8 +969,12 @@ export default function AILabPage() {
                       id="asset-select"
                       value={selectedAsset}
                       onChange={(e) => setSelectedAsset(e.target.value)}
-                      disabled={isAnalyzing}
-                      className="bg-slate-900 border border-slate-700/80 rounded-xl px-3 py-1.5 text-xs font-bold text-white focus:outline-none focus:border-cyan-400 cursor-pointer"
+                      disabled={isAnalyzing || timingInfo.isTradeActive}
+                      className={`bg-slate-900 border rounded-xl px-3 py-1.5 text-xs font-bold text-white focus:outline-none transition-all ${
+                        timingInfo.isTradeActive 
+                          ? 'border-amber-700/60 text-slate-400 cursor-not-allowed' 
+                          : 'border-slate-700/80 focus:border-cyan-400 cursor-pointer'
+                      }`}
                     >
                       {(activeTab === 'OTC' ? OTC_INSTRUMENTS : LIVE_INSTRUMENTS).map(inst => (
                         <option key={inst.symbol} value={inst.symbol}>
@@ -942,25 +994,39 @@ export default function AILabPage() {
                   <button
                     type="button"
                     onClick={() => executeAnalysis()}
-                    disabled={isAnalyzing}
-                    className={`w-full sm:w-auto px-6 py-3 rounded-xl text-xs font-black uppercase tracking-wider transition-all duration-300 flex items-center justify-center gap-2 shadow-lg cursor-pointer ${
+                    disabled={isAnalyzing || timingInfo.isTradeActive}
+                    className={`w-full sm:w-auto px-6 py-3 rounded-xl text-xs font-black uppercase tracking-wider transition-all duration-300 flex items-center justify-center gap-2 shadow-lg ${
                       isAnalyzing
                         ? 'bg-slate-800 text-slate-400 cursor-wait'
+                        : timingInfo.isTradeActive
+                        ? 'bg-amber-950/80 border border-amber-600/60 text-amber-300 cursor-not-allowed shadow-none'
                         : activeTab === 'OTC'
-                        ? 'bg-gradient-to-r from-cyan-500 via-blue-600 to-cyan-500 hover:from-cyan-400 hover:to-blue-500 text-slate-950 font-black shadow-cyan-500/20 active:scale-95'
-                        : 'bg-gradient-to-r from-indigo-500 via-purple-600 to-indigo-500 hover:from-indigo-400 hover:to-purple-500 text-white font-black shadow-indigo-500/20 active:scale-95'
+                        ? 'bg-gradient-to-r from-cyan-500 via-blue-600 to-cyan-500 hover:from-cyan-400 hover:to-blue-500 text-slate-950 font-black shadow-cyan-500/20 active:scale-95 cursor-pointer'
+                        : 'bg-gradient-to-r from-indigo-500 via-purple-600 to-indigo-500 hover:from-indigo-400 hover:to-purple-500 text-white font-black shadow-indigo-500/20 active:scale-95 cursor-pointer'
                     }`}
                   >
                     <RefreshCw className={`w-4 h-4 ${isAnalyzing ? 'animate-spin' : ''}`} />
                     <span>
                       {isAnalyzing 
                         ? `Analyzing Chart (${analysisSecondsLeft}s)...` 
+                        : timingInfo.isTradeActive 
+                        ? `TRADE RUNNING ON QUOTEX (${timingInfo.secondsRemainingToCompletion}s REMAINING)` 
                         : activeTab === 'OTC' 
                         ? 'GENERATE OTC SIGNAL (30s ANALYSIS)' 
                         : 'GENERATE LIVE SIGNAL (30s ANALYSIS)'}
                     </span>
                   </button>
                 </div>
+
+                {/* Trade In-Flight Notice: Generator Locked until candle completes */}
+                {timingInfo.isTradeActive && (
+                  <div className="mt-4 p-3.5 rounded-xl bg-amber-950/40 border border-amber-500/60 text-amber-200 text-xs flex items-center gap-3 animate-pulse">
+                    <AlertTriangle className="w-4 h-4 text-amber-400 shrink-0" />
+                    <span className="leading-relaxed">
+                      <strong className="text-white">Active Quotex Trade in Flight:</strong> Trade on <strong className="text-cyan-300">{upcomingSignal?.asset}</strong> is currently executing with 1-minute expiration. New signal generation is locked until this trade candle completes at <strong>{upcomingSignal?.entry_time}</strong> (<strong>{timingInfo.secondsRemainingToCompletion}s</strong> remaining).
+                    </span>
+                  </div>
+                )}
 
                 {/* Step indicator while analyzing */}
                 {isAnalyzing && (
