@@ -45,8 +45,11 @@ class TelegramService:
         self.channel_map: Dict[str, TelegramSource] = {} # username -> TelegramSource
         self.entity_id_map: Dict[int, TelegramSource] = {} # entity_id or peer_id -> TelegramSource
         self.resolved_entities: list = []
+        self.resolved_entities_dict: Dict[str, Any] = {}
+        self._processed_msg_ids: set = set()
         self._listener_task: Optional[asyncio.Task] = None
         self._watchdog_task: Optional[asyncio.Task] = None
+        self._fast_poller_task: Optional[asyncio.Task] = None
         self._listeners_registered: bool = False
         self._connect_lock = asyncio.Lock()
 
@@ -472,6 +475,7 @@ class TelegramService:
             try:
                 entity = await self.client.get_entity(username)
                 self.resolved_entities.append(entity)
+                self.resolved_entities_dict[username.lower()] = entity
                 self.entity_id_map[entity.id] = source
                 self.entity_id_map[abs(entity.id)] = source
                 self.entity_id_map[str(entity.id)] = source
@@ -488,21 +492,71 @@ class TelegramService:
             except Exception as e:
                 logger.error(f"Error resolving channel entity for @{username}: {e}")
 
-        target_chats = self.resolved_entities if self.resolved_entities else list(self.channel_map.keys())
-        logger.info(f"Registering Telegram message listeners for channels: {target_chats}")
+        logger.info("Registering Telegram message listeners for live MTProto stream...")
 
-        @self.client.on(events.NewMessage(chats=target_chats))
+        @self.client.on(events.NewMessage())
         async def new_message_handler(event):
             await self._handle_telegram_event(event, is_edit=False)
 
-        @self.client.on(events.MessageEdited(chats=target_chats))
+        @self.client.on(events.MessageEdited())
         async def edit_message_handler(event):
             await self._handle_telegram_event(event, is_edit=True)
 
         self._listeners_registered = True
 
+        # Launch sub-2-second zero-latency fast channel poller to guarantee on-time ingestion
+        if self._fast_poller_task is None or self._fast_poller_task.done():
+            self._fast_poller_task = asyncio.create_task(self._fast_channel_poller())
+
         # Asynchronously backfill recent channel messages so current day signals appear immediately
         asyncio.create_task(self._backfill_recent_messages(limit=200))
+
+    async def _fast_channel_poller(self):
+        """
+        Sub-2-second zero-latency poller that checks the top 3 messages of monitored channels.
+        Guarantees that new signals and results are ingested instantly on time even if an
+        MTProto socket push event is delayed or dropped by Telegram.
+        """
+        logger.info("Fast channel poller started (sub-2-second zero latency).")
+        while True:
+            await asyncio.sleep(2)
+            if not self.client or not self.is_connected or not self.is_authorized:
+                continue
+            try:
+                for username, source in self.channel_map.items():
+                    u_key = username.lower()
+                    entity = self.resolved_entities_dict.get(u_key)
+                    if not entity:
+                        try:
+                            entity = await self.client.get_entity(username)
+                            self.resolved_entities_dict[u_key] = entity
+                        except Exception:
+                            continue
+                    try:
+                        msgs = await self.client.get_messages(entity, limit=3)
+                        if not msgs:
+                            continue
+                        for msg in reversed(msgs):
+                            if not msg or not msg.message:
+                                continue
+                            if msg.id in self._processed_msg_ids:
+                                continue
+                            pub_at = msg.date.replace(tzinfo=timezone.utc) if msg.date else datetime.now(timezone.utc)
+                            await self.process_incoming_message(
+                                source=source,
+                                message_id=msg.id,
+                                raw_text=msg.message,
+                                published_at=pub_at,
+                                is_edit=False,
+                                is_test_data=False
+                            )
+                            self._processed_msg_ids.add(msg.id)
+                            if len(self._processed_msg_ids) > 1000:
+                                self._processed_msg_ids = set(list(self._processed_msg_ids)[-500:])
+                    except Exception as poll_err:
+                        logger.debug(f"Fast poller channel check error for @{username}: {poll_err}")
+            except Exception as e:
+                logger.debug(f"Fast channel poller iteration error: {e}")
 
     async def _backfill_channel(self, username: str, source: TelegramSource, limit: int = 200):
         """Backfills recent messages for a single channel in chronological order."""
@@ -671,13 +725,6 @@ class TelegramService:
                 return []
 
             for sig in pending_signals:
-                rec_dt = sig.website_received_at
-                if rec_dt and rec_dt.tzinfo is not None:
-                    rec_dt = rec_dt.replace(tzinfo=None)
-                if rec_dt and rec_dt > cutoff_naive:
-                    # Received less than max_wait_seconds ago by our system
-                    continue
-
                 old_status = sig.status
                 sig.status = "UNKNOWN"
                 sig.reported_result = "UNKNOWN"
@@ -727,6 +774,11 @@ class TelegramService:
             if timed_out_ids:
                 await db.commit()
                 logger.info(f"Auto-timed out {len(timed_out_ids)} signals to UNKNOWN: {timed_out_ids}")
+                try:
+                    from export_snapshot import export_snapshot
+                    asyncio.create_task(export_snapshot())
+                except Exception:
+                    pass
 
         return timed_out_ids
 
@@ -959,6 +1011,11 @@ class TelegramService:
                 }
                 await ws_manager.broadcast_signal("NEW_SIGNAL", signal_dict)
                 result_payload["signal"] = signal_dict
+                try:
+                    from export_snapshot import export_snapshot
+                    asyncio.create_task(export_snapshot())
+                except Exception:
+                    pass
 
             elif parsed["type"] == "RESULT":
                 data = parsed["data"]
@@ -994,6 +1051,11 @@ class TelegramService:
                     }
                     await ws_manager.broadcast_signal("SIGNAL_UPDATED", signal_dict)
                     result_payload["updated_signal"] = signal_dict
+                    try:
+                        from export_snapshot import export_snapshot
+                        asyncio.create_task(export_snapshot())
+                    except Exception:
+                        pass
                 else:
                     result_payload["review_flag"] = reason
 

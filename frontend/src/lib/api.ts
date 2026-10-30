@@ -40,15 +40,17 @@ async function safeFetchJson<T>(endpoint: string, fallback: T): Promise<T> {
   const primaryUrl = `${getApiBaseUrl()}${endpoint}`;
   try {
     const res = await fetch(primaryUrl, { cache: 'no-store' });
-    if (res.ok) return await res.json();
+    const ct = res.headers.get('content-type') || '';
+    if (res.ok && ct.includes('application/json')) return await res.json();
   } catch {
-    // Attempt fallback via Next.js internal proxy rewrite
-    try {
-      const proxyRes = await fetch(`/api/v1${endpoint}`, { cache: 'no-store' });
-      if (proxyRes.ok) return await proxyRes.json();
-    } catch {
-      // Safe fallback
-    }
+    // Attempt fallback via Next.js internal API route
+  }
+  try {
+    const proxyRes = await fetch(`/api/v1${endpoint}`, { cache: 'no-store' });
+    const pct = proxyRes.headers.get('content-type') || '';
+    if (proxyRes.ok && pct.includes('application/json')) return await proxyRes.json();
+  } catch {
+    // Safe fallback
   }
   return fallback;
 }

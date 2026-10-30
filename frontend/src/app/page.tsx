@@ -319,7 +319,11 @@ export default function HomePage() {
               if (s.status === 'WIN' || s.status === 'LOSS') return false;
               const dateStr = s.signal_published_at || s.website_received_at || s.created_at;
               if (dateStr) {
-                const t = new Date(dateStr).getTime();
+                let normalized = dateStr.includes('T') ? dateStr : dateStr.replace(' ', 'T');
+                if (!normalized.endsWith('Z') && !normalized.includes('+') && !normalized.slice(-6).includes('-')) {
+                  normalized += 'Z';
+                }
+                const t = new Date(normalized).getTime();
                 if (!isNaN(t) && currentTime - t >= 300000) return true;
               }
               return false;

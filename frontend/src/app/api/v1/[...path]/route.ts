@@ -41,8 +41,11 @@ export async function GET(
     clearTimeout(timeout);
 
     if (res.ok) {
-      const data = await res.json();
-      return NextResponse.json(data);
+      const ct = res.headers.get('content-type') || '';
+      if (ct.includes('application/json')) {
+        const data = await res.json();
+        return NextResponse.json(data);
+      }
     }
   } catch {
     // Backend not reachable, fall back to snapshot data
@@ -98,8 +101,11 @@ export async function POST(
     clearTimeout(timeout);
 
     if (res.ok) {
-      const data = await res.json();
-      return NextResponse.json(data);
+      const ct = res.headers.get('content-type') || '';
+      if (ct.includes('application/json')) {
+        const data = await res.json();
+        return NextResponse.json(data);
+      }
     }
   } catch {
     // Backend not reachable

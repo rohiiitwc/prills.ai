@@ -20,6 +20,33 @@ router = APIRouter(prefix="/signals", tags=["signals"])
 def clean_source_name(category: Optional[str]) -> str:
     return "Quotex OTC Engine" if category == "OTC" else "Global Forex Stream"
 
+def map_signal_to_dict(s: Any) -> Optional[Dict[str, Any]]:
+    if not s:
+        return None
+    return {
+        "id": s.id,
+        "source_id": s.source_id,
+        "source_name": clean_source_name(s.market_category),
+        "market_category": s.market_category,
+        "asset": s.asset,
+        "direction": s.direction,
+        "direction_display": s.direction_display,
+        "entry_time_announced": s.entry_time_announced,
+        "entry_time_converted": s.entry_time_converted,
+        "expiry_duration": s.expiry_duration,
+        "signal_published_at": s.signal_published_at.isoformat() if s.signal_published_at else None,
+        "website_received_at": s.website_received_at.isoformat() if s.website_received_at else None,
+        "is_late": s.is_late,
+        "late_by_seconds": s.late_by_seconds,
+        "status": s.status,
+        "reported_result": s.reported_result,
+        "result_reported_at": s.result_reported_at.isoformat() if s.result_reported_at else None,
+        "raw_signal_text": s.raw_signal_text,
+        "raw_result_text": s.raw_result_text,
+        "review_reason": s.review_reason,
+        "is_test_data": s.is_test_data
+    }
+
 @router.get("", response_model=SignalPagination)
 async def get_signals(
     market: Optional[str] = Query(None, description="OTC or LIVE"),
@@ -308,31 +335,7 @@ async def get_latest_signals(db: AsyncSession = Depends(get_db)):
     pending_signals = res_pending.scalars().unique().all()
 
     def map_sig(s):
-        if not s:
-            return None
-        return {
-            "id": s.id,
-            "source_id": s.source_id,
-            "source_name": clean_source_name(s.market_category),
-            "market_category": s.market_category,
-            "asset": s.asset,
-            "direction": s.direction,
-            "direction_display": s.direction_display,
-            "entry_time_announced": s.entry_time_announced,
-            "entry_time_converted": s.entry_time_converted,
-            "expiry_duration": s.expiry_duration,
-            "signal_published_at": s.signal_published_at.isoformat(),
-            "website_received_at": s.website_received_at.isoformat(),
-            "is_late": s.is_late,
-            "late_by_seconds": s.late_by_seconds,
-            "status": s.status,
-            "reported_result": s.reported_result,
-            "result_reported_at": s.result_reported_at.isoformat() if s.result_reported_at else None,
-            "raw_signal_text": s.raw_signal_text,
-            "raw_result_text": s.raw_result_text,
-            "review_reason": s.review_reason,
-            "is_test_data": s.is_test_data
-        }
+        return map_signal_to_dict(s)
 
     return {
         "latest_otc": map_sig(latest_otc),

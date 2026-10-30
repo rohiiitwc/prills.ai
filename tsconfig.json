@@ -24,6 +24,7 @@
   },
   "include": [
     "frontend/next-env.d.ts",
+    "frontend/declarations.d.ts",
     "frontend/**/*.ts",
     "frontend/**/*.tsx",
     "frontend/.next/types/**/*.ts",
