@@ -316,7 +316,7 @@ export async function POST(
     if (isScanAll) {
       let bestResult: any = null;
       for (const cand of candidateList) {
-        const res = runServerlessAiAnalysis(market_category, cand, true);
+        const res = await runServerlessAiAnalysis(market_category, cand, true);
         if (!bestResult || res.upcoming_signal.confidence_percentage > bestResult.upcoming_signal.confidence_percentage) {
           bestResult = res;
         }
@@ -325,10 +325,10 @@ export async function POST(
           break;
         }
       }
-      return NextResponse.json(bestResult || runServerlessAiAnalysis(market_category, candidateList[0], true));
+      return NextResponse.json(bestResult || await runServerlessAiAnalysis(market_category, candidateList[0], true));
     }
 
-    const result = runServerlessAiAnalysis(market_category, rawAsset, false);
+    const result = await runServerlessAiAnalysis(market_category, rawAsset, false);
     return NextResponse.json(result);
   }
 
@@ -524,8 +524,97 @@ function getAiLabHistoryFallback(market?: string | null, asset?: string | null) 
   };
 }
 
+const INSTRUMENT_BASE_PRICES: Record<string, number> = {
+  // Quotex Official 24/7 OTC Currency Pairs
+  'USDINR-OTC': 105.100,
+  'USDPKR-OTC': 278.40,
+  'USDBRL-OTC': 5.750,
+  'USDZAR-OTC': 17.65,
+  'NZDCHF-OTC': 0.5170,
+  'USDMXN-OTC': 19.825,
+  'USDBDT-OTC': 120.50,
+  'USDEGP-OTC': 48.90,
+  'USDTRY-OTC': 34.280,
+  'USDARS-OTC': 995.00,
+  'USDCOP-OTC': 4420.00,
+  'USDIDR-OTC': 15720.00,
+  'USDPHP-OTC': 58.20,
+  'USDDZD-OTC': 133.50,
+  'USDNGN-OTC': 1650.00,
+  'EURUSD-OTC': 1.08620,
+  'GBPUSD-OTC': 1.29850,
+  'USDJPY-OTC': 152.450,
+  'USDCHF-OTC': 0.86550,
+  'USDCAD-OTC': 1.38950,
+  'EURJPY-OTC': 165.620,
+  'EURGBP-OTC': 0.83650,
+  'GBPJPY-OTC': 197.850,
+  'AUDUSD-OTC': 0.65800,
+  'NZDUSD-OTC': 0.59750,
+  'AUDCAD-OTC': 0.91450,
+  'AUDCHF-OTC': 0.56950,
+  'AUDJPY-OTC': 100.250,
+  'AUDNZD-OTC': 1.10150,
+  'CADJPY-OTC': 109.720,
+  'CADCHF-OTC': 0.62300,
+  'CHFJPY-OTC': 176.150,
+  'EURCHF-OTC': 0.94020,
+  'EURCAD-OTC': 1.50950,
+  'EURNZD-OTC': 1.81800,
+  'EURAUD-OTC': 1.65080,
+  'GBPAUD-OTC': 1.97350,
+  'GBPCAD-OTC': 1.80450,
+  'GBPCHF-OTC': 1.12400,
+  'GBPNZD-OTC': 2.17300,
+  'NZDJPY-OTC': 91.050,
+  'NZDCAD-OTC': 0.83020,
+  'BTCUSD-OTC': 71850.00,
+  'ETHUSD-OTC': 2640.00,
+  'XAUUSD-OTC': 2745.50,
+  'XAGUSD-OTC': 33.80,
+
+  // Quotex Live Market (Spot Forex Interbank Rates)
+  'USDJPY': 157.45,
+  'EURJPY': 175.63,
+  'AUDJPY': 110.72,
+  'AUDUSD': 0.7034,
+  'EURCAD': 1.5562,
+  'AUDCAD': 0.9811,
+  'EURUSD': 1.1158,
+  'GBPUSD': 1.3390,
+  'USDCHF': 0.8650,
+  'USDCAD': 1.3892,
+  'NZDUSD': 0.5970,
+  'EURGBP': 0.8362,
+  'GBPJPY': 197.62,
+  'CADJPY': 109.60,
+  'CHFJPY': 176.05,
+  'NZDJPY': 90.95,
+  'EURAUD': 1.6500,
+  'EURCHF': 0.9395,
+  'EURNZD': 1.8170,
+  'GBPAUD': 1.9720,
+  'GBPCAD': 1.8030,
+  'GBPCHF': 1.1230,
+  'GBPNZD': 2.1710,
+  'AUDCHF': 0.5690,
+  'AUDNZD': 1.1010,
+  'CADCHF': 0.6225,
+  'NZDCAD': 0.8295,
+  'NZDCHF': 0.5165,
+  'XAUUSD': 2744.0,
+  'BTCUSD': 71800.0,
+  'ETHUSD': 2635.0
+};
+
 function getBasePriceForAsset(asset: string): number {
-  const upper = asset.toUpperCase();
+  const clean = asset.trim().toUpperCase().replace('/', '').replace(/\s+/g, '');
+  if (INSTRUMENT_BASE_PRICES[clean]) return INSTRUMENT_BASE_PRICES[clean];
+  if (INSTRUMENT_BASE_PRICES[`${clean}-OTC`]) return INSTRUMENT_BASE_PRICES[`${clean}-OTC`];
+  const withoutOtc = clean.replace('-OTC', '');
+  if (INSTRUMENT_BASE_PRICES[withoutOtc]) return INSTRUMENT_BASE_PRICES[withoutOtc];
+
+  const upper = clean;
   if (upper.includes('BTC')) return 71850.0;
   if (upper.includes('ETH')) return 2640.0;
   if (upper.includes('XAU') || upper.includes('GOLD')) return 2745.0;
@@ -535,20 +624,6 @@ function getBasePriceForAsset(asset: string): number {
   if (upper.includes('GER40') || upper.includes('DAX')) return 19450.0;
   if (upper.includes('US500') || upper.includes('SPX')) return 5810.0;
   if (upper.includes('UK100') || upper.includes('FTSE')) return 8240.0;
-  if (upper.includes('AAPL')) return 232.50;
-  if (upper.includes('MSFT')) return 435.80;
-  if (upper.includes('AMZN')) return 188.20;
-  if (upper.includes('GOOGL')) return 178.60;
-  if (upper.includes('TSLA')) return 260.40;
-  if (upper.includes('META')) return 585.50;
-  if (upper.includes('NFLX')) return 750.20;
-  if (upper.includes('NVDA')) return 141.50;
-  if (upper.includes('BA')) return 156.40;
-  if (upper.includes('INTC')) return 22.80;
-  if (upper.includes('PFE')) return 28.60;
-  if (upper.includes('JNJ')) return 161.20;
-  if (upper.includes('MCD')) return 295.40;
-  if (upper.includes('CRUDE') || upper.includes('OIL') || upper.includes('BRENT')) return 70.0;
   if (upper.includes('IDR')) return 15720.0;
   if (upper.includes('COP')) return 4420.0;
   if (upper.includes('NGN')) return 1650.0;
@@ -560,10 +635,15 @@ function getBasePriceForAsset(asset: string): number {
   if (upper.includes('PHP')) return 58.20;
   if (upper.includes('EGP')) return 48.90;
   if (upper.includes('TRY')) return 34.28;
-  if (upper.includes('MXN')) return 19.82;
+  if (upper.includes('MXN')) return 19.825;
   if (upper.includes('ZAR')) return 17.65;
-  if (upper.includes('JPY')) return 152.45;
+  if (upper.includes('JPY')) return 157.45;
   if (upper.includes('BRL')) return 5.75;
+  if (upper.includes('EURCAD')) return 1.5562;
+  if (upper.includes('AUDCAD')) return 0.9811;
+  if (upper.includes('AUDUSD')) return 0.7034;
+  if (upper.includes('EURUSD')) return 1.1158;
+  if (upper.includes('GBPUSD')) return 1.3390;
   return 1.0862;
 }
 
@@ -573,49 +653,158 @@ function roundPriceForAsset(price: number, basePrice: number): number {
   return Math.round(price * 100000) / 100000;
 }
 
-function runServerlessAiAnalysis(market_category: string, asset: string, isScanAll: boolean = false) {
-  const isOtc = market_category === 'OTC';
-  const basePrice = getBasePriceForAsset(asset);
-  const volatility = basePrice * 0.00030;
-
-  // Build 30 stochastic candles calibrated to Quotex price scales (No sine waves)
-  const candles: any[] = [];
-  let curr = basePrice;
-  let momentum = (Math.random() - 0.5) * volatility * 0.4;
-  const now = new Date();
-
-  for (let i = 30; i > 0; i--) {
-    const t = new Date(now.getTime() - i * 60000);
-    momentum = 0.65 * momentum + (Math.random() - 0.5) * volatility * 0.9;
-    const meanReversion = (basePrice - curr) * 0.05;
-    const drift = momentum + meanReversion;
-    const o = roundPriceForAsset(curr, basePrice);
-    const c = roundPriceForAsset(o + drift, basePrice);
-    const wickHigh = Math.abs((Math.random() - 0.5) * volatility * 0.7);
-    const wickLow = Math.abs((Math.random() - 0.5) * volatility * 0.7);
-    const h = roundPriceForAsset(Math.max(o, c) + wickHigh, basePrice);
-    const l = roundPriceForAsset(Math.min(o, c) - wickLow, basePrice);
-    candles.push({
-      timestamp: t.toLocaleTimeString('en-IN', { timeZone: 'Asia/Kolkata', hour12: false, hour: '2-digit', minute: '2-digit' }) + ' IST',
-      iso_time: t.toISOString(),
-      open: o,
-      high: Math.max(h, o, c),
-      low: Math.min(l, o, c),
-      close: c,
-      volume: Math.floor(Math.random() * 600 + 150),
-      direction: c >= o ? 'UP' : 'DOWN'
+async function fetchLiveForexBars(asset: string, count: number = 30): Promise<any[] | null> {
+  const cleanSym = asset.replace('-OTC', '').replace('/', '').replace(/\s+/g, '').toUpperCase();
+  try {
+    const controller = new AbortController();
+    const timeout = setTimeout(() => controller.abort(), 2500);
+    const url = `https://query1.finance.yahoo.com/v8/finance/chart/${cleanSym}=X?interval=1m&range=${count + 15}m`;
+    const res = await fetch(url, {
+      signal: controller.signal,
+      headers: {
+        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36'
+      },
+      next: { revalidate: 0 }
     });
-    curr = c;
+    clearTimeout(timeout);
+    if (!res.ok) return null;
+    const data = await res.json();
+    const result = data?.chart?.result?.[0];
+    if (!result) return null;
+    const timestamps: number[] = result.timestamp || [];
+    const quote = result.indicators?.quote?.[0] || {};
+    const opens: (number | null)[] = quote.open || [];
+    const highs: (number | null)[] = quote.high || [];
+    const lows: (number | null)[] = quote.low || [];
+    const closes: (number | null)[] = quote.close || [];
+    const volumes: (number | null)[] = quote.volume || [];
+
+    const bars: any[] = [];
+    for (let i = 0; i < timestamps.length; i++) {
+      const o = opens[i];
+      const h = highs[i];
+      const l = lows[i];
+      const c = closes[i];
+      if (o == null || h == null || l == null || c == null) continue;
+      const d = new Date(timestamps[i] * 1000);
+      const timeStr = d.toLocaleTimeString('en-IN', {
+        timeZone: 'Asia/Kolkata',
+        hour12: false,
+        hour: '2-digit',
+        minute: '2-digit'
+      }) + ' IST';
+      const v = volumes[i] ?? Math.floor(Math.random() * 450 + 150);
+      const dec = c >= 1000 ? 2 : (c >= 50 ? 4 : 5);
+      const factor = Math.pow(10, dec);
+      const openR = Math.round(o * factor) / factor;
+      const highR = Math.round(h * factor) / factor;
+      const lowR = Math.round(l * factor) / factor;
+      const closeR = Math.round(c * factor) / factor;
+      bars.push({
+        timestamp: timeStr,
+        iso_time: d.toISOString(),
+        open: openR,
+        high: highR,
+        low: lowR,
+        close: closeR,
+        volume: v,
+        direction: closeR >= openR ? 'UP' : 'DOWN'
+      });
+    }
+    if (bars.length >= 15) {
+      return bars.slice(-count);
+    }
+  } catch {
+    return null;
+  }
+  return null;
+}
+
+async function runServerlessAiAnalysis(market_category: string, asset: string, isScanAll: boolean = false) {
+  const now = new Date();
+  const isOtc = market_category === 'OTC';
+  let basePrice = getBasePriceForAsset(asset);
+  let candles: any[] = [];
+
+  if (!isOtc) {
+    const liveBars = await fetchLiveForexBars(asset, 30);
+    if (liveBars && liveBars.length >= 15) {
+      candles = liveBars;
+      basePrice = candles[candles.length - 1].close;
+    }
   }
 
-  const lastClose = candles[candles.length - 1].close;
-  const rsi = Math.round((48 + Math.random() * 22) * 10) / 10;
-  const ema9 = roundPriceForAsset(lastClose - volatility * 0.1, basePrice);
-  const sma20 = roundPriceForAsset(lastClose - volatility * 0.3, basePrice);
+  const volatility = basePrice * 0.00030;
+
+  if (candles.length === 0) {
+    // Build 30 stochastic candles calibrated to Quotex price scales (No sine waves)
+    let curr = basePrice;
+    let momentum = (Math.random() - 0.5) * volatility * 0.4;
+
+    for (let i = 30; i > 0; i--) {
+      const t = new Date(now.getTime() - i * 60000);
+      momentum = 0.65 * momentum + (Math.random() - 0.5) * volatility * 0.9;
+      const meanReversion = (basePrice - curr) * 0.05;
+      const drift = momentum + meanReversion;
+      const o = roundPriceForAsset(curr, basePrice);
+      const c = roundPriceForAsset(o + drift, basePrice);
+      const wickHigh = Math.abs((Math.random() - 0.5) * volatility * 0.7);
+      const wickLow = Math.abs((Math.random() - 0.5) * volatility * 0.7);
+      const h = roundPriceForAsset(Math.max(o, c) + wickHigh, basePrice);
+      const l = roundPriceForAsset(Math.min(o, c) - wickLow, basePrice);
+      candles.push({
+        timestamp: t.toLocaleTimeString('en-IN', { timeZone: 'Asia/Kolkata', hour12: false, hour: '2-digit', minute: '2-digit' }) + ' IST',
+        iso_time: t.toISOString(),
+        open: o,
+        high: Math.max(h, o, c),
+        low: Math.min(l, o, c),
+        close: c,
+        volume: Math.floor(Math.random() * 600 + 150),
+        direction: c >= o ? 'UP' : 'DOWN'
+      });
+      curr = c;
+    }
+  }
+
+  const lastBar = candles[candles.length - 1];
+  const lastClose = lastBar.close;
+
+  // Real EMA 9 calculation
+  let emaVal = candles[0].close;
+  const k9 = 2 / (9 + 1);
+  for (let i = 1; i < candles.length; i++) {
+    emaVal = candles[i].close * k9 + emaVal * (1 - k9);
+  }
+  const ema9 = roundPriceForAsset(emaVal, basePrice);
+
+  // Real SMA 20 calculation
+  const smaSlice = candles.slice(-20);
+  const smaVal = smaSlice.reduce((acc, b) => acc + b.close, 0) / smaSlice.length;
+  const sma20 = roundPriceForAsset(smaVal, basePrice);
+
+  // Real RSI 14 calculation
+  let gains = 0;
+  let losses = 0;
+  const rsiSlice = candles.slice(-15);
+  for (let i = 1; i < rsiSlice.length; i++) {
+    const diff = rsiSlice[i].close - rsiSlice[i - 1].close;
+    if (diff > 0) gains += diff;
+    else losses += Math.abs(diff);
+  }
+  const avgGain = gains / 14;
+  const avgLoss = losses / 14;
+  const rs = avgLoss === 0 ? 100 : avgGain / avgLoss;
+  const rawRsi = avgLoss === 0 ? 100 : 100 - (100 / (1 + rs));
+  const rsi = Math.round(Math.min(95, Math.max(15, rawRsi)) * 10) / 10;
+
   const bb_upper = roundPriceForAsset(lastClose + volatility * 1.8, basePrice);
   const bb_lower = roundPriceForAsset(lastClose - volatility * 1.8, basePrice);
-  const pattern = rsi > 55 ? 'Bullish Engulfing' : (rsi < 45 ? 'Bearish Engulfing' : 'Doji (Indecision)');
-  const primary_trend = rsi > 52 ? 'BULLISH' : (rsi < 48 ? 'BEARISH' : 'RANGING');
+  const pattern = lastClose > lastBar.open 
+    ? 'Bullish Engulfing' 
+    : (lastClose < lastBar.open ? 'Bearish Engulfing' : 'Doji (Indecision)');
+  const primary_trend = ema9 > sma20 && rsi >= 50 
+    ? 'BULLISH' 
+    : (ema9 < sma20 && rsi <= 50 ? 'BEARISH' : (rsi > 52 ? 'BULLISH' : (rsi < 48 ? 'BEARISH' : 'RANGING')));
 
   const indicators = {
     rsi,

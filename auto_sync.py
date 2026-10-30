@@ -8,7 +8,7 @@ logging.basicConfig(level=logging.INFO, format="%(asctime)s [%(levelname)s] %(me
 logger = logging.getLogger("auto_sync")
 
 last_git_push_time = 0
-GIT_PUSH_COOLDOWN = 30  # 30-second cooldown to sync website on time without spamming git
+GIT_PUSH_COOLDOWN = 300  # 5-minute cooldown so Vercel builds finish without being cancelled
 
 async def sync_loop():
     global last_git_push_time
