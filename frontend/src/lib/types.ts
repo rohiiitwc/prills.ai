@@ -167,6 +167,22 @@ export interface SimulatedOutcome {
   disclaimer: string;
 }
 
+export interface QuotexTradeResult {
+  asset: string;
+  market_category: 'OTC' | 'LIVE';
+  direction: 'CALL' | 'PUT';
+  strike_price: number;
+  close_price: number;
+  delta: string;
+  candle_outcome: 'UP' | 'DOWN' | 'NEUTRAL';
+  trade_outcome: 'WIN' | 'LOSS' | 'DRAW';
+  profit_percentage: number;
+  payout_label: string;
+  settlement_delay_seconds: number;
+  settled_at: string;
+  verification_notice: string;
+}
+
 export interface UpcomingSignal {
   asset: string;
   market_category: 'OTC' | 'LIVE';
@@ -200,6 +216,7 @@ export interface AIAnalysisPayload {
   simulated_candle: SimulatedCandle;
   simulated_outcome: SimulatedOutcome;
   upcoming_signal?: UpcomingSignal;
+  quotex_trade_result?: QuotexTradeResult;
 }
 
 export interface AILabStats {
