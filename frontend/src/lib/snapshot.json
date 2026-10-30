@@ -19,7 +19,7 @@
     "live_win_rate_percentage": 80.3,
     "telegram_connected": true,
     "telegram_auth_status": "CONNECTED",
-    "last_sync_at": "2026-10-30T04:48:18.553094+00:00",
+    "last_sync_at": "2026-10-30T04:50:22.703879+00:00",
     "source_1_status": "CONNECTED",
     "source_2_status": "CONNECTED"
   },
@@ -4064,7 +4064,7 @@
     "is_connected": true,
     "status": "CONNECTED",
     "error_message": null,
-    "last_sync_at": "2026-10-30T04:48:18.553094+00:00",
+    "last_sync_at": "2026-10-30T04:50:22.703879+00:00",
     "sources": [
       {
         "name": "QUOTEX OFFICIAL VIP BOT",
