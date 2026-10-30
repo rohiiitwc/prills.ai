@@ -287,3 +287,4 @@ def generate_simulated_one_minute_candle(
         "outcome": outcome,
         "ticks": ticks
     }
+

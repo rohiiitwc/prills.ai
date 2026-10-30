@@ -167,6 +167,24 @@ export interface SimulatedOutcome {
   disclaimer: string;
 }
 
+export interface UpcomingSignal {
+  asset: string;
+  market_category: 'OTC' | 'LIVE';
+  direction: 'CALL' | 'PUT';
+  direction_display: 'CALL UP' | 'PUT DOWN';
+  entry_time: string; // e.g. "11:46:00 IST"
+  entry_time_raw: string;
+  announced_at: string;
+  seconds_to_entry: number;
+  timing_notice: string;
+  expiry_duration: string;
+  strike_price: number;
+  confidence_percentage: number;
+  model_consensus: string;
+  technical_trigger: string;
+  quotex_execution_notes: string;
+}
+
 export interface AIAnalysisPayload {
   session_id: number;
   market_category: 'OTC' | 'LIVE';
@@ -179,6 +197,7 @@ export interface AIAnalysisPayload {
   ai_analysis: MultiAIAnalysis;
   simulated_candle: SimulatedCandle;
   simulated_outcome: SimulatedOutcome;
+  upcoming_signal?: UpcomingSignal;
 }
 
 export interface AILabStats {

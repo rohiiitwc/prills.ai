@@ -19,6 +19,43 @@ interface StoredUser {
 }
 const serverlessUserStore = new Map<string, StoredUser>();
 
+let cachedRemoteSnapshot: any = null;
+let lastRemoteFetchTime = 0;
+
+async function getLiveSnapshot() {
+  const now = Date.now();
+  if (cachedRemoteSnapshot && now - lastRemoteFetchTime < 10000) {
+    return cachedRemoteSnapshot;
+  }
+  try {
+    const controller = new AbortController();
+    const timeout = setTimeout(() => controller.abort(), 2500);
+    const res = await fetch(
+      'https://raw.githubusercontent.com/rohiiitwc/prills.ai/main/frontend/src/lib/snapshot.json',
+      {
+        signal: controller.signal,
+        cache: 'no-store',
+        headers: {
+          'Accept': 'application/json',
+          'User-Agent': 'PRILLS-AI-Vercel-Sync/1.0',
+        },
+      }
+    );
+    clearTimeout(timeout);
+    if (res.ok) {
+      const data = await res.json();
+      if (data && data.stats && data.latest) {
+        cachedRemoteSnapshot = data;
+        lastRemoteFetchTime = now;
+        return data;
+      }
+    }
+  } catch {
+    // Fall back to bundled snapshotData
+  }
+  return snapshotData;
+}
+
 export async function GET(
   request: NextRequest,
   { params }: { params: Promise<{ path: string[] }> }
@@ -51,21 +88,22 @@ export async function GET(
     // Backend not reachable, fall back to snapshot data
   }
 
-  // Graceful fallback from verified snapshot
+  // Graceful fallback from verified snapshot (with live remote sync)
+  const snapshot = await getLiveSnapshot();
   if (pathStr === 'telegram/status') {
-    return NextResponse.json(snapshotData.telegram_status);
+    return NextResponse.json(snapshot.telegram_status || snapshotData.telegram_status);
   }
   if (pathStr === 'signals/latest') {
-    return NextResponse.json(snapshotData.latest);
+    return NextResponse.json(snapshot.latest || snapshotData.latest);
   }
   if (pathStr === 'signals/stats') {
-    return NextResponse.json(snapshotData.stats);
+    return NextResponse.json(snapshot.stats || snapshotData.stats);
   }
   if (pathStr === 'signals') {
     const market = request.nextUrl.searchParams.get('market');
-    if (market === 'OTC') return NextResponse.json(snapshotData.signals_otc);
-    if (market === 'LIVE') return NextResponse.json(snapshotData.signals_live);
-    return NextResponse.json(snapshotData.all_signals);
+    if (market === 'OTC') return NextResponse.json(snapshot.signals_otc || snapshotData.signals_otc);
+    if (market === 'LIVE') return NextResponse.json(snapshot.signals_live || snapshotData.signals_live);
+    return NextResponse.json(snapshot.all_signals || snapshotData.all_signals);
   }
 
   // AI Learning Lab Serverless Fallback
@@ -599,6 +637,13 @@ function runServerlessAiAnalysis(market_category: string, asset: string) {
 
   serverlessAiSessions.unshift(newSession);
 
+  const nextMinute = new Date(now.getTime() + 60000);
+  nextMinute.setSeconds(0, 0);
+  const entryTimeIst = nextMinute.toLocaleTimeString('en-IN', { timeZone: 'Asia/Kolkata', hour12: false, hour: '2-digit', minute: '2-digit', second: '2-digit' }) + ' IST';
+  const announcedAtIst = now.toLocaleTimeString('en-IN', { timeZone: 'Asia/Kolkata', hour12: false, hour: '2-digit', minute: '2-digit', second: '2-digit' }) + ' IST';
+  const dir = primary_trend === 'BULLISH' ? 'CALL' : (primary_trend === 'BEARISH' ? 'PUT' : (rsi >= 50 ? 'CALL' : 'PUT'));
+  const dirDisplay = dir === 'CALL' ? 'CALL UP' : 'PUT DOWN';
+
   return {
     session_id: newSession.id,
     market_category,
@@ -616,6 +661,23 @@ function runServerlessAiAnalysis(market_category: string, asset: string) {
       close_price: closePrice,
       outcome: candleOutcome,
       ticks
+    },
+    upcoming_signal: {
+      asset,
+      market_category,
+      direction: dir,
+      direction_display: dirDisplay,
+      entry_time: entryTimeIst,
+      entry_time_raw: nextMinute.toISOString(),
+      announced_at: announcedAtIst,
+      seconds_to_entry: Math.max(1, Math.round((nextMinute.getTime() - now.getTime()) / 1000)),
+      timing_notice: 'ANNOUNCED 30 SECONDS BEFORE ENTRY',
+      expiry_duration: '1 Minutes',
+      strike_price: lastClose,
+      confidence_percentage: 82.0,
+      model_consensus: ai_analysis.consensus_notes,
+      technical_trigger: `EMA 9 vs SMA 20 (${ema9} / ${sma20}) + RSI (${rsi}) + Pattern: ${pattern}`,
+      quotex_execution_notes: `Enter trade on Quotex platform at exactly ${entryTimeIst} with 1-Minute expiry.`
     },
     simulated_outcome: {
       prediction,

@@ -158,6 +158,23 @@ async def analyze_market(
         "indicators": indicators,
         "ai_analysis": ai_analysis,
         "simulated_candle": simulated_candle,
+        "upcoming_signal": {
+            "asset": asset,
+            "market_category": category,
+            "direction": "CALL" if ai_analysis["consensus_trend"] == "BULLISH" else ("PUT" if ai_analysis["consensus_trend"] == "BEARISH" else ("CALL" if indicators["rsi"] >= 50 else "PUT")),
+            "direction_display": "CALL UP" if (ai_analysis["consensus_trend"] == "BULLISH" or (ai_analysis["consensus_trend"] == "RANGING" and indicators["rsi"] >= 50)) else "PUT DOWN",
+            "entry_time": (now_ist + timedelta(minutes=1)).replace(second=0, microsecond=0).strftime("%H:%M:00 IST"),
+            "entry_time_raw": (now_ist + timedelta(minutes=1)).replace(second=0, microsecond=0).isoformat(),
+            "announced_at": now_ist.strftime("%H:%M:%S IST"),
+            "seconds_to_entry": max(1, int(((now_ist + timedelta(minutes=1)).replace(second=0, microsecond=0) - now_ist).total_seconds())),
+            "timing_notice": "ANNOUNCED 30 SECONDS BEFORE ENTRY",
+            "expiry_duration": "1 Minutes",
+            "strike_price": current_price,
+            "confidence_percentage": round(sum(p["confidence_score"] for p in providers.values()) / max(1, len(providers)), 1),
+            "model_consensus": ai_analysis["consensus_notes"],
+            "technical_trigger": f"EMA 9 vs SMA 20 ({indicators['ema9']} / {indicators['sma20']}) + RSI ({indicators['rsi']}) + Pattern: {indicators['pattern']}",
+            "quotex_execution_notes": "Enter trade on Quotex platform at exactly " + (now_ist + timedelta(minutes=1)).replace(second=0, microsecond=0).strftime("%H:%M:00 IST") + " with 1-Minute expiry."
+        },
         "simulated_outcome": {
             "prediction": hypothetical_pred,
             "candle_outcome": candle_outcome,
@@ -283,3 +300,4 @@ async def get_ai_lab_history(
         "page_size": page_size,
         "total_pages": total_pages
     }
+

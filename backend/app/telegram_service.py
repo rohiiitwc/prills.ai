@@ -516,7 +516,7 @@ class TelegramService:
             self._fast_poller_task = asyncio.create_task(self._fast_channel_poller())
 
         # Asynchronously backfill recent channel messages so current day signals appear immediately
-        asyncio.create_task(self._backfill_recent_messages(limit=200))
+        asyncio.create_task(self._backfill_recent_messages(limit=400))
 
     async def _fast_channel_poller(self):
         """

@@ -8,7 +8,7 @@ logging.basicConfig(level=logging.INFO, format="%(asctime)s [%(levelname)s] %(me
 logger = logging.getLogger("auto_sync")
 
 last_git_push_time = 0
-GIT_PUSH_COOLDOWN = 600  # Minimum 10 minutes between automated git pushes to keep Vercel build queue clear
+GIT_PUSH_COOLDOWN = 30  # 30-second cooldown to sync website on time without spamming git
 
 async def sync_loop():
     global last_git_push_time
@@ -34,18 +34,18 @@ async def sync_loop():
                             ["git", "commit", "-m", "sync(telegram): auto-sync signals snapshot on time"],
                             check=True
                         )
+                        subprocess.run(["git", "pull", "--rebase", "origin", "main"], check=False)
                         subprocess.run(["git", "push", "origin", "main"], check=True)
                         last_git_push_time = time.time()
-                        logger.info("Successfully pushed updated snapshot to origin/main for Vercel deployment!")
+                        logger.info("Successfully pushed updated snapshot to origin/main for real-time Vercel sync!")
                 except Exception as git_err:
                     logger.debug(f"Git push notice: {git_err}")
 
         except Exception as e:
             logger.error(f"Auto-sync loop notice: {e}")
 
-        # Sync snapshot every 15 seconds
-        await asyncio.sleep(15)
+        # Check every 8 seconds for new signals
+        await asyncio.sleep(8)
 
 if __name__ == "__main__":
     asyncio.run(sync_loop())
-
