@@ -21,18 +21,18 @@ from backend.app.ai_lab.ai_providers import generate_multi_provider_analysis
 router = APIRouter(prefix="/ai-lab", tags=["ai-lab"])
 
 # Full Quotex pairs catalogs for all-pairs market scanning
+# Pairs that HAVE OTC on Quotex:
 ALL_OTC_CANDIDATES = [
-    "EURUSD-OTC", "USDINR-OTC", "GBPUSD-OTC", "USDJPY-OTC", "USDBDT-OTC",
-    "USDCAD-OTC", "USDCHF-OTC", "EURJPY-OTC", "GBPJPY-OTC", "USDTRY-OTC",
-    "USDPKR-OTC", "USDMXN-OTC", "USDNGN-OTC", "USDBRL-OTC", "AUDUSD-OTC",
-    "NZDUSD-OTC", "EURGBP-OTC", "AUDJPY-OTC", "CADJPY-OTC", "CHFJPY-OTC",
-    "NZDJPY-OTC", "EURAUD-OTC", "EURCAD-OTC", "GBPAUD-OTC", "GBPCAD-OTC"
+    "USDINR-OTC", "USDPKR-OTC", "USDBRL-OTC", "USDZAR-OTC", "NZDCHF-OTC",
+    "USDMXN-OTC", "USDBDT-OTC", "USDEGP-OTC", "USDTRY-OTC", "USDARS-OTC",
+    "USDCOP-OTC", "USDIDR-OTC", "USDPHP-OTC", "USDDZD-OTC", "USDNGN-OTC"
 ]
 
+# Pairs that DON'T HAVE OTC on Quotex (Live Interbank Market):
 ALL_LIVE_CANDIDATES = [
-    "EURUSD", "GBPUSD", "USDJPY", "AUDCAD", "USDCHF", "USDCAD",
-    "AUDUSD", "NZDUSD", "EURGBP", "EURJPY", "GBPJPY", "AUDJPY",
-    "CADJPY", "CHFJPY", "NZDJPY", "EURAUD", "EURCAD", "GBPAUD", "GBPCAD"
+    "USDJPY", "EURJPY", "AUDJPY", "AUDUSD", "EURCAD", "AUDCAD",
+    "EURUSD", "GBPUSD", "USDCHF", "USDCAD", "NZDUSD", "EURGBP",
+    "GBPJPY", "CADJPY", "CHFJPY", "NZDJPY", "EURAUD", "EURCHF", "EURNZD"
 ]
 
 class AnalyzeRequest(BaseModel):

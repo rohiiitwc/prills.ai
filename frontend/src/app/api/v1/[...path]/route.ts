@@ -304,14 +304,13 @@ export async function POST(
     const isScanAll = !rawAsset || rawAsset === 'ALL' || rawAsset === 'AUTO' || rawAsset === 'NONE';
     const candidateList = market_category === 'OTC'
       ? [
-          'EURUSD-OTC', 'USDINR-OTC', 'GBPUSD-OTC', 'USDJPY-OTC', 'USDBDT-OTC',
-          'USDCAD-OTC', 'USDCHF-OTC', 'EURJPY-OTC', 'GBPJPY-OTC', 'USDTRY-OTC',
-          'USDPKR-OTC', 'USDMXN-OTC', 'USDNGN-OTC', 'USDBRL-OTC', 'AUDUSD-OTC',
-          'NZDUSD-OTC', 'EURGBP-OTC', 'AUDJPY-OTC', 'CADJPY-OTC'
+          'USDINR-OTC', 'USDPKR-OTC', 'USDBRL-OTC', 'USDZAR-OTC', 'NZDCHF-OTC',
+          'USDMXN-OTC', 'USDBDT-OTC', 'USDEGP-OTC', 'USDTRY-OTC', 'USDARS-OTC',
+          'USDCOP-OTC', 'USDIDR-OTC', 'USDPHP-OTC', 'USDDZD-OTC', 'USDNGN-OTC'
         ]
       : [
-          'EURUSD', 'GBPUSD', 'USDJPY', 'AUDCAD', 'USDCHF', 'USDCAD',
-          'AUDUSD', 'NZDUSD', 'EURGBP', 'EURJPY', 'GBPJPY', 'AUDJPY'
+          'USDJPY', 'EURJPY', 'AUDJPY', 'AUDUSD', 'EURCAD', 'AUDCAD',
+          'EURUSD', 'GBPUSD', 'USDCHF', 'USDCAD', 'NZDUSD', 'EURGBP', 'GBPJPY'
         ];
 
     if (isScanAll) {
@@ -557,7 +556,7 @@ function getBasePriceForAsset(asset: string): number {
   if (upper.includes('PKR')) return 278.40;
   if (upper.includes('DZD')) return 133.50;
   if (upper.includes('BDT')) return 120.50;
-  if (upper.includes('INR')) return 84.15;
+  if (upper.includes('INR')) return 105.10;
   if (upper.includes('PHP')) return 58.20;
   if (upper.includes('EGP')) return 48.90;
   if (upper.includes('TRY')) return 34.28;

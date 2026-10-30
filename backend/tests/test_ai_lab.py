@@ -66,12 +66,12 @@ async def test_ai_lab_endpoints():
         # 1. Analyze OTC
         otc_res = await client.post("/api/v1/ai-lab/analyze", json={
             "market_category": "OTC",
-            "asset": "EURUSD-OTC"
+            "asset": "USDINR-OTC"
         })
         assert otc_res.status_code == 200
         otc_data = otc_res.json()
         assert otc_data["market_category"] == "OTC"
-        assert otc_data["asset"] == "EURUSD-OTC"
+        assert otc_data["asset"] == "USDINR-OTC"
         assert "simulated_outcome" in otc_data
         assert otc_data["simulated_outcome"]["simulated_result"] in ["WIN", "LOSS", "DRAW"]
 
