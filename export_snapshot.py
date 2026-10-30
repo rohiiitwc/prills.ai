@@ -182,11 +182,12 @@ async def export_snapshot():
         signals_otc = await get_page("OTC")
         signals_live = await get_page("LIVE")
 
+        last_pub = (latest.get("latest_otc") or {}).get("signal_published_at") or (latest.get("latest_live") or {}).get("signal_published_at") or "2026-10-30T00:00:00Z"
         tg_status = {
             "is_connected": True,
             "status": "CONNECTED",
             "error_message": None,
-            "last_sync_at": now_utc.isoformat(),
+            "last_sync_at": last_pub,
             "sources": [
                 {
                     "name": "QUOTEX OFFICIAL VIP BOT",
