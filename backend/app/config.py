@@ -49,6 +49,16 @@ class Settings(BaseSettings):
     ADMIN_API_KEY: str = Field(default="prills-admin-secret-2026")
     CORS_ORIGINS: List[str] = ["*"]
     
+    # AI Learning Lab Provider Keys (Server-Side Only)
+    OPENAI_API_KEY: str = Field(default="")
+    GEMINI_API_KEY: str = Field(default="")
+    GROQ_API_KEY: str = Field(default="")
+    
+    # Quotex Secure References (Server-Side Only)
+    QUOTEX_LINK: str = Field(default="https://quotex.com/en/trade")
+    QUOTEX_EMAIL: str = Field(default="")
+    QUOTEX_PASSWORD: str = Field(default="")
+    
     model_config = SettingsConfigDict(
         env_file=".env",
         env_file_encoding="utf-8",

@@ -91,3 +91,142 @@ export interface PaginatedSignals {
   page_size: number;
   total_pages: number;
 }
+
+// ==========================================
+// AI LEARNING LAB TYPES (ISOLATED EDUCATIONAL)
+// ==========================================
+
+export interface CandleData {
+  timestamp: string;
+  iso_time: string;
+  open: number;
+  high: number;
+  low: number;
+  close: number;
+  volume: number;
+  direction: 'UP' | 'DOWN' | 'NEUTRAL';
+}
+
+export interface TechnicalIndicators {
+  rsi: number;
+  ema9: number;
+  sma20: number;
+  macd_line: number;
+  macd_signal: number;
+  macd_hist: number;
+  bb_upper: number;
+  bb_lower: number;
+  support: number;
+  resistance: number;
+  pattern: string;
+  primary_trend: 'BULLISH' | 'BEARISH' | 'RANGING';
+  volatility_status: string;
+}
+
+export interface AIProviderAnalysis {
+  provider_name: 'OpenAI' | 'Gemini' | 'Groq';
+  model_name: string;
+  detected_trend: 'BULLISH' | 'BEARISH' | 'RANGING';
+  confidence_score: number;
+  technical_observations: string;
+  supporting_indicators: string[];
+  reasons_for_analysis: string;
+  agreement_with_consensus: boolean;
+  limitations_uncertainty: string;
+  is_fallback?: boolean;
+}
+
+export interface MultiAIAnalysis {
+  consensus_trend: 'BULLISH' | 'BEARISH' | 'RANGING';
+  agreement_percentage: number;
+  consensus_notes: string;
+  providers: {
+    openai: AIProviderAnalysis;
+    gemini: AIProviderAnalysis;
+    groq: AIProviderAnalysis;
+  };
+}
+
+export interface SimulatedCandle {
+  start_price: number;
+  high_price: number;
+  low_price: number;
+  close_price: number;
+  outcome: 'UP' | 'DOWN' | 'NEUTRAL';
+  ticks: Array<{
+    second: number;
+    price: number;
+  }>;
+}
+
+export interface SimulatedOutcome {
+  prediction: 'UP' | 'DOWN';
+  candle_outcome: 'UP' | 'DOWN' | 'NEUTRAL';
+  simulated_result: 'WIN' | 'LOSS' | 'DRAW';
+  is_simulation_only: boolean;
+  disclaimer: string;
+}
+
+export interface AIAnalysisPayload {
+  session_id: number;
+  market_category: 'OTC' | 'LIVE';
+  asset: string;
+  timeframe: string;
+  chart_data_source: string;
+  timestamp_ist: string;
+  candles: CandleData[];
+  indicators: TechnicalIndicators;
+  ai_analysis: MultiAIAnalysis;
+  simulated_candle: SimulatedCandle;
+  simulated_outcome: SimulatedOutcome;
+}
+
+export interface AILabStats {
+  total_analyses: number;
+  otc_analyses: number;
+  live_analyses: number;
+  ai_agreement_rate: number;
+  candle_outcomes: {
+    up_count: number;
+    down_count: number;
+    neutral_count: number;
+  };
+  simulated_results: {
+    wins: number;
+    losses: number;
+    draws: number;
+    win_rate: number;
+  };
+  disclaimer: string;
+}
+
+export interface AILabHistoryItem {
+  id: number;
+  market_category: 'OTC' | 'LIVE';
+  asset: string;
+  timeframe: string;
+  chart_data_source: string;
+  timestamp_ist: string;
+  start_price: number;
+  high_price: number;
+  low_price: number;
+  close_price: number;
+  candle_outcome: 'UP' | 'DOWN' | 'NEUTRAL';
+  rsi: number;
+  primary_trend: string;
+  detected_pattern: string;
+  simulated_prediction: string;
+  simulated_result: string;
+  consensus_agreement_pct: number;
+  status: string;
+  providers_count: number;
+  providers: AIProviderAnalysis[];
+}
+
+export interface PaginatedAILabHistory {
+  items: AILabHistoryItem[];
+  total: number;
+  page: number;
+  page_size: number;
+  total_pages: number;
+}

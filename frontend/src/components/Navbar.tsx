@@ -56,6 +56,7 @@ export const Navbar: React.FC<NavbarProps> = ({ isConnected, telegramStatus, las
     { label: 'Quotex OTC', href: '/otc', icon: Layers },
     { label: 'Live Forex', href: '/live', icon: Globe },
     { label: 'Signal History', href: '/history', icon: History },
+    { label: 'AI Lab', href: '/ai-lab', icon: Cpu },
   ];
 
   const formatLastSync = (isoStr?: string | null) => {

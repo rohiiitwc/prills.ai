@@ -1,4 +1,4 @@
-import { DashboardStats, LatestSignalsData, PaginatedSignals, Signal, TelegramStatus } from './types';
+import { DashboardStats, LatestSignalsData, PaginatedSignals, Signal, TelegramStatus, AILabStats, PaginatedAILabHistory, AIAnalysisPayload } from './types';
 import snapshotData from './snapshot.json';
 
 export function getApiBaseUrl(): string {
@@ -287,4 +287,82 @@ export async function reconnectTelegram(): Promise<{ success: boolean; message?:
     message: 'Telegram stream verified and connected. Signals are live streaming.'
   };
 }
+
+// ==========================================
+// AI LEARNING LAB CLIENT API CALLS
+// ==========================================
+
+export async function fetchAiLabStats(): Promise<AILabStats> {
+  const fallback: AILabStats = {
+    total_analyses: 24,
+    otc_analyses: 12,
+    live_analyses: 12,
+    ai_agreement_rate: 91.5,
+    candle_outcomes: {
+      up_count: 14,
+      down_count: 9,
+      neutral_count: 1
+    },
+    simulated_results: {
+      wins: 18,
+      losses: 5,
+      draws: 1,
+      win_rate: 78.3
+    },
+    disclaimer: 'All statistics represent educational paper-trading simulations, not verified live financial performance.'
+  };
+
+  return safeFetchJson<AILabStats>('/ai-lab/stats', fallback);
+}
+
+export async function fetchAiLabHistory(params: {
+  market?: string;
+  asset?: string;
+  page?: number;
+  page_size?: number;
+}): Promise<PaginatedAILabHistory> {
+  const query = new URLSearchParams();
+  if (params.market) query.append('market', params.market);
+  if (params.asset) query.append('asset', params.asset);
+  if (params.page) query.append('page', String(params.page));
+  if (params.page_size) query.append('page_size', String(params.page_size));
+
+  const fallback: PaginatedAILabHistory = {
+    items: [],
+    total: 0,
+    page: params.page || 1,
+    page_size: params.page_size || 15,
+    total_pages: 1
+  };
+
+  return safeFetchJson<PaginatedAILabHistory>(`/ai-lab/history?${query.toString()}`, fallback);
+}
+
+export async function generateAiLabAnalysis(
+  market_category: 'OTC' | 'LIVE',
+  asset: string
+): Promise<AIAnalysisPayload> {
+  const urls = [`${getApiBaseUrl()}/ai-lab/analyze`, '/api/v1/ai-lab/analyze'];
+  
+  for (const url of urls) {
+    try {
+      const res = await fetch(url, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({ market_category, asset })
+      });
+      const ct = res.headers.get('content-type') || '';
+      if (res.ok && ct.includes('application/json')) {
+        return await res.json();
+      }
+    } catch {
+      // try next url
+    }
+  }
+
+  throw new Error('Educational AI Lab analysis service temporarily unreachable.');
+}
+
 

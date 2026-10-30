@@ -1,5 +1,5 @@
 from datetime import datetime, timezone
-from sqlalchemy import Column, Integer, String, Boolean, DateTime, Text, ForeignKey, UniqueConstraint, Index
+from sqlalchemy import Column, Integer, String, Boolean, DateTime, Text, ForeignKey, UniqueConstraint, Index, Float
 from sqlalchemy.orm import relationship
 from backend.app.database import Base
 
@@ -124,3 +124,70 @@ class UserAccount(Base):
     is_active = Column(Boolean, default=True)
     created_at = Column(DateTime(timezone=True), default=utcnow)
     last_login_at = Column(DateTime(timezone=True), nullable=True)
+
+
+# ==========================================
+# AI LEARNING LAB (ISOLATED EDUCATIONAL MODELS)
+# ==========================================
+
+class AIAnalysisSession(Base):
+    __tablename__ = "ai_analysis_sessions"
+
+    id = Column(Integer, primary_key=True, index=True)
+    market_category = Column(String(20), nullable=False, index=True) # "OTC" or "LIVE"
+    asset = Column(String(50), nullable=False, index=True) # e.g. "AUDCAD-OTC", "EURUSD"
+    timeframe = Column(String(20), default="1m")
+    chart_data_source = Column(String(100), nullable=False) # e.g. "Quotex OTC Engine Replay"
+    
+    opened_at = Column(DateTime(timezone=True), nullable=False)
+    closed_at = Column(DateTime(timezone=True), nullable=False)
+    
+    start_price = Column(Float, nullable=False)
+    high_price = Column(Float, nullable=False)
+    low_price = Column(Float, nullable=False)
+    close_price = Column(Float, nullable=False)
+    candle_outcome = Column(String(20), nullable=False) # "UP", "DOWN", "NEUTRAL"
+    
+    # Technical Indicators
+    rsi_value = Column(Float, nullable=True)
+    macd_value = Column(Float, nullable=True)
+    macd_signal = Column(Float, nullable=True)
+    macd_hist = Column(Float, nullable=True)
+    ema9 = Column(Float, nullable=True)
+    sma20 = Column(Float, nullable=True)
+    bb_upper = Column(Float, nullable=True)
+    bb_lower = Column(Float, nullable=True)
+    detected_pattern = Column(String(100), nullable=True)
+    primary_trend = Column(String(50), nullable=False) # "BULLISH", "BEARISH", "RANGING"
+    
+    # Paper-trading simulated outcome
+    simulated_prediction = Column(String(20), nullable=False) # "UP", "DOWN"
+    simulated_result = Column(String(20), nullable=False) # "WIN", "LOSS", "DRAW"
+    consensus_agreement_pct = Column(Float, default=100.0)
+    
+    status = Column(String(30), default="COMPLETED")
+    created_at = Column(DateTime(timezone=True), default=utcnow, index=True)
+
+    provider_responses = relationship("AIProviderResponse", back_populates="session", cascade="all, delete-orphan")
+
+
+class AIProviderResponse(Base):
+    __tablename__ = "ai_provider_responses"
+
+    id = Column(Integer, primary_key=True, index=True)
+    session_id = Column(Integer, ForeignKey("ai_analysis_sessions.id"), nullable=False, index=True)
+    provider_name = Column(String(50), nullable=False) # "OpenAI", "Gemini", "Groq"
+    model_name = Column(String(100), nullable=False)
+    
+    detected_trend = Column(String(50), nullable=False) # "BULLISH", "BEARISH", "RANGING"
+    confidence_score = Column(Float, default=75.0)
+    technical_observations = Column(Text, nullable=False)
+    supporting_indicators = Column(Text, nullable=True) # JSON list or dict
+    reasons_for_analysis = Column(Text, nullable=False)
+    agreement_with_consensus = Column(Boolean, default=True)
+    limitations_uncertainty = Column(Text, nullable=False)
+    is_fallback = Column(Boolean, default=False)
+    created_at = Column(DateTime(timezone=True), default=utcnow)
+
+    session = relationship("AIAnalysisSession", back_populates="provider_responses")
+
