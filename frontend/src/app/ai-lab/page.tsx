@@ -926,7 +926,7 @@ export default function AILabPage() {
                       <option value="ALL">⭐ ALL PAIRS (Auto-Scan Quotex for Highest Confidence Signal)</option>
                       {(activeTab === 'OTC' ? OTC_INSTRUMENTS : LIVE_INSTRUMENTS).map(inst => (
                         <option key={inst.symbol} value={inst.symbol}>
-                          {inst.symbol}
+                          {inst.name} ({inst.symbol})
                         </option>
                       ))}
                     </select>
@@ -1023,12 +1023,14 @@ export default function AILabPage() {
                 <div className="w-full bg-[#050914] rounded-2xl p-4 border border-slate-900 relative overflow-hidden">
                   {currentAnalysis?.candles && currentAnalysis.candles.length > 0 ? (
                     <div className="w-full overflow-x-auto">
-                      <svg viewBox="0 0 700 240" className="w-full h-56 min-w-[500px]">
-                        {/* Grid lines */}
-                        <line x1="0" y1="40" x2="700" y2="40" stroke="#1e293b" strokeDasharray="3,3" strokeWidth="0.5" />
-                        <line x1="0" y1="100" x2="700" y2="100" stroke="#1e293b" strokeDasharray="3,3" strokeWidth="0.5" />
-                        <line x1="0" y1="160" x2="700" y2="160" stroke="#1e293b" strokeDasharray="3,3" strokeWidth="0.5" />
-                        <line x1="0" y1="210" x2="700" y2="210" stroke="#1e293b" strokeDasharray="3,3" strokeWidth="0.5" />
+                      <svg viewBox="0 0 760 240" className="w-full h-56 min-w-[550px]">
+                        {/* Horizontal Grid lines */}
+                        <line x1="0" y1="35" x2="695" y2="35" stroke="#1e293b" strokeDasharray="3,3" strokeWidth="0.5" />
+                        <line x1="0" y1="90" x2="695" y2="90" stroke="#1e293b" strokeDasharray="3,3" strokeWidth="0.5" />
+                        <line x1="0" y1="145" x2="695" y2="145" stroke="#1e293b" strokeDasharray="3,3" strokeWidth="0.5" />
+                        <line x1="0" y1="205" x2="695" y2="205" stroke="#1e293b" strokeDasharray="3,3" strokeWidth="0.5" />
+                        {/* Vertical Axis separator */}
+                        <line x1="695" y1="15" x2="695" y2="215" stroke="#334155" strokeWidth="1" />
 
                         {(() => {
                           const candles = currentAnalysis.candles;
@@ -1036,19 +1038,65 @@ export default function AILabPage() {
                           const minP = Math.min(...prices);
                           const maxP = Math.max(...prices);
                           const range = Math.max(0.0001, maxP - minP);
+                          const lastClose = candles[candles.length - 1].close;
+
+                          const decimals = lastClose >= 1000 ? 2 : (lastClose >= 50 ? 4 : 5);
 
                           const getY = (val: number) => {
-                            return 210 - ((val - minP) / range) * 170;
+                            return 205 - ((val - minP) / range) * 170;
                           };
 
                           const barWidth = 14;
-                          const spacing = 700 / candles.length;
+                          const chartWidth = 690;
+                          const spacing = chartWidth / candles.length;
 
+                          // Compute authentic EMA 9 curve
+                          const kEma = 2 / (9 + 1);
+                          let emaRunning = candles[0].close;
                           const emaPoints: string[] = [];
                           const smaPoints: string[] = [];
 
+                          for (let i = 0; i < candles.length; i++) {
+                            emaRunning = candles[i].close * kEma + emaRunning * (1 - kEma);
+                            const x = i * spacing + spacing / 2;
+                            if (i >= 2) emaPoints.push(`${x},${getY(emaRunning)}`);
+
+                            if (i >= 4) {
+                              const windowSlice = candles.slice(Math.max(0, i - 19), i + 1);
+                              const sum = windowSlice.reduce((acc, bar) => acc + bar.close, 0);
+                              smaPoints.push(`${x},${getY(sum / windowSlice.length)}`);
+                            }
+                          }
+
+                          const yCurrent = getY(lastClose);
+
                           return (
                             <>
+                              {/* Quotex-style Right Price Axis Labels */}
+                              <text x="702" y="38" fill="#94a3b8" fontSize="9" fontFamily="monospace">
+                                {maxP.toFixed(decimals)}
+                              </text>
+                              <text x="702" y="93" fill="#64748b" fontSize="8.5" fontFamily="monospace">
+                                {((maxP * 2 + minP) / 3).toFixed(decimals)}
+                              </text>
+                              <text x="702" y="148" fill="#64748b" fontSize="8.5" fontFamily="monospace">
+                                {((maxP + minP * 2) / 3).toFixed(decimals)}
+                              </text>
+                              <text x="702" y="208" fill="#94a3b8" fontSize="9" fontFamily="monospace">
+                                {minP.toFixed(decimals)}
+                              </text>
+
+                              {/* Quotex-style Horizontal Price Guideline for Current Candle */}
+                              <line x1="0" y1={yCurrent} x2="695" y2={yCurrent} stroke="#0284c7" strokeDasharray="2,2" strokeWidth="0.8" opacity="0.8" />
+                              
+                              {/* Glowing Quotex Current Price Tag */}
+                              <g transform={`translate(695, ${Math.max(18, Math.min(195, yCurrent - 9))})`}>
+                                <rect x="0" y="0" width="62" height="18" rx="4" fill="#0284c7" className="shadow-lg" />
+                                <text x="31" y="12" fill="#ffffff" fontSize="8.5" fontWeight="bold" textAnchor="middle" fontFamily="monospace">
+                                  {lastClose.toFixed(decimals)}
+                                </text>
+                              </g>
+
                               {candles.map((c, i) => {
                                 const x = i * spacing + spacing / 2;
                                 const yOpen = getY(c.open);
@@ -1059,9 +1107,6 @@ export default function AILabPage() {
                                 const color = isGreen ? '#10b981' : '#f43f5e';
                                 const bodyTop = Math.min(yOpen, yClose);
                                 const bodyHeight = Math.max(2, Math.abs(yClose - yOpen));
-
-                                if (i >= 4) emaPoints.push(`${x},${getY(c.close * 0.9998)}`);
-                                if (i >= 8) smaPoints.push(`${x},${getY(c.close * 0.9996)}`);
 
                                 return (
                                   <g key={i} className="hover:opacity-80 transition-opacity">
@@ -1087,9 +1132,9 @@ export default function AILabPage() {
                                 <polyline
                                   fill="none"
                                   stroke="#22d3ee"
-                                  strokeWidth="1.5"
+                                  strokeWidth="1.6"
                                   points={emaPoints.join(' ')}
-                                  opacity="0.8"
+                                  opacity="0.9"
                                 />
                               )}
 
@@ -1097,9 +1142,9 @@ export default function AILabPage() {
                                 <polyline
                                   fill="none"
                                   stroke="#818cf8"
-                                  strokeWidth="1.5"
+                                  strokeWidth="1.6"
                                   points={smaPoints.join(' ')}
-                                  opacity="0.8"
+                                  opacity="0.9"
                                 />
                               )}
                             </>
@@ -1121,10 +1166,10 @@ export default function AILabPage() {
                       <span className="text-[10px] text-slate-400 uppercase font-bold block">RSI (14)</span>
                       <span className={`text-sm font-mono font-black ${
                         currentAnalysis.indicators.rsi > 70 
-                          ? 'text-rose-400' 
-                          : currentAnalysis.indicators.rsi < 30 
-                          ? 'text-emerald-400' 
-                          : 'text-cyan-300'
+                            ? 'text-rose-400' 
+                            : currentAnalysis.indicators.rsi < 30 
+                            ? 'text-emerald-400' 
+                            : 'text-cyan-300'
                       }`}>
                         {currentAnalysis.indicators.rsi}
                       </span>
@@ -1133,7 +1178,7 @@ export default function AILabPage() {
                     <div className="p-2.5 rounded-xl bg-slate-900/90 border border-slate-800 text-center">
                       <span className="text-[10px] text-slate-400 uppercase font-bold block">EMA 9 / SMA 20</span>
                       <span className="text-xs font-mono font-bold text-white">
-                        {currentAnalysis.indicators.ema9}
+                        {currentAnalysis.indicators.ema9} / {currentAnalysis.indicators.sma20}
                       </span>
                     </div>
 

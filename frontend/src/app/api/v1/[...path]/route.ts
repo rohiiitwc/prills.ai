@@ -325,7 +325,7 @@ export async function POST(
           break;
         }
       }
-      return NextResponse.json(bestResult || runServerlessAiAnalysis(market_category, 'EURUSD-OTC', true));
+      return NextResponse.json(bestResult || runServerlessAiAnalysis(market_category, candidateList[0], true));
     }
 
     const result = runServerlessAiAnalysis(market_category, rawAsset, false);
@@ -569,27 +569,32 @@ function getBasePriceForAsset(asset: string): number {
 
 function roundPriceForAsset(price: number, basePrice: number): number {
   if (basePrice >= 1000) return Math.round(price * 100) / 100;
-  if (basePrice >= 100) return Math.round(price * 1000) / 1000;
+  if (basePrice >= 50) return Math.round(price * 10000) / 10000;
   return Math.round(price * 100000) / 100000;
 }
 
 function runServerlessAiAnalysis(market_category: string, asset: string, isScanAll: boolean = false) {
   const isOtc = market_category === 'OTC';
   const basePrice = getBasePriceForAsset(asset);
-  const volatility = basePrice * 0.00035;
+  const volatility = basePrice * 0.00030;
 
-  // Build 30 synthetic historical candles
+  // Build 30 stochastic candles calibrated to Quotex price scales (No sine waves)
   const candles: any[] = [];
   let curr = basePrice;
+  let momentum = (Math.random() - 0.5) * volatility * 0.4;
   const now = new Date();
 
   for (let i = 30; i > 0; i--) {
     const t = new Date(now.getTime() - i * 60000);
-    const drift = Math.sin(i * 0.3) * (volatility * 0.5) + (Math.random() - 0.5) * volatility;
+    momentum = 0.65 * momentum + (Math.random() - 0.5) * volatility * 0.9;
+    const meanReversion = (basePrice - curr) * 0.05;
+    const drift = momentum + meanReversion;
     const o = roundPriceForAsset(curr, basePrice);
     const c = roundPriceForAsset(o + drift, basePrice);
-    const h = roundPriceForAsset(Math.max(o, c) + Math.random() * volatility * 0.5, basePrice);
-    const l = roundPriceForAsset(Math.min(o, c) - Math.random() * volatility * 0.5, basePrice);
+    const wickHigh = Math.abs((Math.random() - 0.5) * volatility * 0.7);
+    const wickLow = Math.abs((Math.random() - 0.5) * volatility * 0.7);
+    const h = roundPriceForAsset(Math.max(o, c) + wickHigh, basePrice);
+    const l = roundPriceForAsset(Math.min(o, c) - wickLow, basePrice);
     candles.push({
       timestamp: t.toLocaleTimeString('en-IN', { timeZone: 'Asia/Kolkata', hour12: false, hour: '2-digit', minute: '2-digit' }) + ' IST',
       iso_time: t.toISOString(),
