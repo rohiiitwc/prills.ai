@@ -49,12 +49,16 @@ import {
 } from '../../lib/api';
 
 const OTC_INSTRUMENTS = [
-  { symbol: 'AUDCAD-OTC', name: 'Australian Dollar / Canadian Dollar (OTC)' },
-  { symbol: 'EURUSD-OTC', name: 'Euro / US Dollar (OTC)' },
-  { symbol: 'USDJPY-OTC', name: 'US Dollar / Japanese Yen (OTC)' },
-  { symbol: 'GBPUSD-OTC', name: 'British Pound / US Dollar (OTC)' },
-  { symbol: 'USDMXN-OTC', name: 'US Dollar / Mexican Peso (OTC)' },
-  { symbol: 'USDNGN-OTC', name: 'US Dollar / Nigerian Naira (OTC)' },
+  { symbol: 'EURUSD-OTC', name: 'Euro / US Dollar (Quotex OTC)' },
+  { symbol: 'USDJPY-OTC', name: 'US Dollar / Japanese Yen (Quotex OTC)' },
+  { symbol: 'GBPUSD-OTC', name: 'British Pound / US Dollar (Quotex OTC)' },
+  { symbol: 'USDINR-OTC', name: 'US Dollar / Indian Rupee (Quotex OTC)' },
+  { symbol: 'USDMXN-OTC', name: 'US Dollar / Mexican Peso (Quotex OTC)' },
+  { symbol: 'USDNGN-OTC', name: 'US Dollar / Nigerian Naira (Quotex OTC)' },
+  { symbol: 'USDBDT-OTC', name: 'US Dollar / Bangladeshi Taka (Quotex OTC)' },
+  { symbol: 'USDTRY-OTC', name: 'US Dollar / Turkish Lira (Quotex OTC)' },
+  { symbol: 'USDCHF-OTC', name: 'US Dollar / Swiss Franc (Quotex OTC)' },
+  { symbol: 'USDCAD-OTC', name: 'US Dollar / Canadian Dollar (Quotex OTC)' },
 ];
 
 const LIVE_INSTRUMENTS = [
@@ -68,7 +72,7 @@ const LIVE_INSTRUMENTS = [
 
 export default function AILabPage() {
   const [activeTab, setActiveTab] = useState<'OTC' | 'LIVE'>('OTC');
-  const [selectedAsset, setSelectedAsset] = useState<string>('AUDCAD-OTC');
+  const [selectedAsset, setSelectedAsset] = useState<string>('EURUSD-OTC');
   const [stats, setStats] = useState<AILabStats | null>(null);
   const [currentAnalysis, setCurrentAnalysis] = useState<AIAnalysisPayload | null>(null);
   const [historyItems, setHistoryItems] = useState<AILabHistoryItem[]>([]);
@@ -117,7 +121,7 @@ export default function AILabPage() {
   // Update selected asset when tab changes
   useEffect(() => {
     if (activeTab === 'OTC') {
-      setSelectedAsset('AUDCAD-OTC');
+      setSelectedAsset('EURUSD-OTC');
     } else {
       setSelectedAsset('EURUSD');
     }

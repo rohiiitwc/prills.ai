@@ -39,7 +39,7 @@ async def analyze_market(
 
     # Default asset if none provided
     if not req.asset:
-        asset = "AUDCAD-OTC" if category == "OTC" else "EURUSD"
+        asset = "EURUSD-OTC" if category == "OTC" else "EURUSD"
     else:
         asset = req.asset.strip().upper()
 

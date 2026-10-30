@@ -11,7 +11,7 @@ from backend.app.ai_lab.ai_providers import generate_multi_provider_analysis
 
 def test_generate_candles_for_instrument():
     # Test OTC
-    otc_candles = generate_candles_for_instrument("AUDCAD-OTC", "OTC", count=30)
+    otc_candles = generate_candles_for_instrument("EURUSD-OTC", "OTC", count=30)
     assert len(otc_candles) == 30
     assert otc_candles[0]["open"] > 0
     assert "timestamp" in otc_candles[0]
@@ -44,9 +44,9 @@ def test_generate_simulated_one_minute_candle():
 
 @pytest.mark.asyncio
 async def test_generate_multi_provider_analysis():
-    candles = generate_candles_for_instrument("AUDCAD-OTC", "OTC", count=30)
+    candles = generate_candles_for_instrument("EURUSD-OTC", "OTC", count=30)
     indicators = calculate_technical_indicators(candles)
-    analysis = await generate_multi_provider_analysis("AUDCAD-OTC", "OTC", indicators, candles)
+    analysis = await generate_multi_provider_analysis("EURUSD-OTC", "OTC", indicators, candles)
 
     assert "consensus_trend" in analysis
     assert "agreement_percentage" in analysis
@@ -66,12 +66,12 @@ async def test_ai_lab_endpoints():
         # 1. Analyze OTC
         otc_res = await client.post("/api/v1/ai-lab/analyze", json={
             "market_category": "OTC",
-            "asset": "AUDCAD-OTC"
+            "asset": "EURUSD-OTC"
         })
         assert otc_res.status_code == 200
         otc_data = otc_res.json()
         assert otc_data["market_category"] == "OTC"
-        assert otc_data["asset"] == "AUDCAD-OTC"
+        assert otc_data["asset"] == "EURUSD-OTC"
         assert "simulated_outcome" in otc_data
         assert otc_data["simulated_outcome"]["simulated_result"] in ["WIN", "LOSS", "DRAW"]
 

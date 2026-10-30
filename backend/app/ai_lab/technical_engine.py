@@ -10,13 +10,17 @@ def get_ist_now() -> datetime:
 
 # Base price anchor points for popular instruments
 INSTRUMENT_BASE_PRICES = {
-    # OTC Instruments
-    "AUDCAD-OTC": 0.88450,
+    # Quotex OTC Instruments (24/7 High Payout Active Pairs)
     "EURUSD-OTC": 1.08620,
     "USDJPY-OTC": 152.450,
     "GBPUSD-OTC": 1.29850,
+    "USDINR-OTC": 84.150,
     "USDMXN-OTC": 19.8250,
     "USDNGN-OTC": 1650.00,
+    "USDBDT-OTC": 120.50,
+    "USDTRY-OTC": 34.280,
+    "USDCHF-OTC": 0.86550,
+    "USDCAD-OTC": 1.38950,
     # Live Market Instruments
     "EURUSD": 1.08580,
     "GBPJPY": 197.620,
