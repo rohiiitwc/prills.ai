@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import snapshotData from '@/lib/snapshot.json';
+import { getQuotexPayout, getQuotexBasePrice, getQuotexConfig } from '@/lib/quotex_assets';
 
 const rawBackendUrl =
   process.env.BACKEND_URL ||
@@ -627,43 +628,7 @@ const INSTRUMENT_BASE_PRICES: Record<string, number> = {
 };
 
 function getBasePriceForAsset(asset: string): number {
-  const clean = asset.trim().toUpperCase().replace('/', '').replace(/\s+/g, '');
-  if (INSTRUMENT_BASE_PRICES[clean]) return INSTRUMENT_BASE_PRICES[clean];
-  if (INSTRUMENT_BASE_PRICES[`${clean}-OTC`]) return INSTRUMENT_BASE_PRICES[`${clean}-OTC`];
-  const withoutOtc = clean.replace('-OTC', '');
-  if (INSTRUMENT_BASE_PRICES[withoutOtc]) return INSTRUMENT_BASE_PRICES[withoutOtc];
-
-  const upper = clean;
-  if (upper.includes('BTC')) return 71850.0;
-  if (upper.includes('ETH')) return 2640.0;
-  if (upper.includes('XAU') || upper.includes('GOLD')) return 2745.0;
-  if (upper.includes('XAG') || upper.includes('SILVER')) return 33.80;
-  if (upper.includes('US30')) return 42300.0;
-  if (upper.includes('US100') || upper.includes('NDX')) return 20450.0;
-  if (upper.includes('GER40') || upper.includes('DAX')) return 19450.0;
-  if (upper.includes('US500') || upper.includes('SPX')) return 5810.0;
-  if (upper.includes('UK100') || upper.includes('FTSE')) return 8240.0;
-  if (upper.includes('IDR')) return 15720.0;
-  if (upper.includes('COP')) return 4420.0;
-  if (upper.includes('NGN')) return 1650.0;
-  if (upper.includes('ARS')) return 995.0;
-  if (upper.includes('PKR')) return 278.40;
-  if (upper.includes('DZD')) return 133.50;
-  if (upper.includes('BDT')) return 120.50;
-  if (upper.includes('INR')) return 105.10;
-  if (upper.includes('PHP')) return 58.20;
-  if (upper.includes('EGP')) return 48.90;
-  if (upper.includes('TRY')) return 49.940;
-  if (upper.includes('MXN')) return 18.788;
-  if (upper.includes('ZAR')) return 16.722;
-  if (upper.includes('JPY')) return 157.42;
-  if (upper.includes('BRL')) return 5.442;
-  if (upper.includes('EURCAD')) return 1.5572;
-  if (upper.includes('AUDCAD')) return 0.9813;
-  if (upper.includes('AUDUSD')) return 0.7034;
-  if (upper.includes('EURUSD')) return 1.1161;
-  if (upper.includes('GBPUSD')) return 1.3391;
-  return 1.1161;
+  return getQuotexBasePrice(asset);
 }
 
 function roundPriceForAsset(price: number, basePrice: number): number {
@@ -958,7 +923,7 @@ async function runServerlessAiAnalysis(market_category: string, asset: string, i
 
   const settleDate = new Date(nextMinute.getTime() + 65000);
   const settledAtIst = settleDate.toLocaleTimeString('en-IN', { timeZone: 'Asia/Kolkata', hour12: false, hour: '2-digit', minute: '2-digit', second: '2-digit' }) + ' IST';
-  const payoutPct = asset.includes('INR') ? 93.0 : (asset.includes('PKR') ? 92.0 : (asset.includes('BRL') || asset.includes('JPY') ? 91.0 : 88.0));
+  const payoutPct = getQuotexPayout(asset);
   const deltaVal = Math.round((closePrice - lastClose) * 10000) / 10000;
   const deltaStr = deltaVal >= 0 ? `+${deltaVal}` : `${deltaVal}`;
   const payoutLabel = simulatedResult === 'WIN' ? `+${payoutPct}% PROFIT` : (simulatedResult === 'LOSS' ? '-100% CAPITAL LOSS' : '0% STRIKE REFUND');

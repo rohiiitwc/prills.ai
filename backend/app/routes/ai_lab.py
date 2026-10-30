@@ -16,6 +16,11 @@ from backend.app.ai_lab.technical_engine import (
     generate_simulated_one_minute_candle,
     get_ist_now
 )
+from backend.app.ai_lab.quotex_assets import (
+    get_quotex_payout,
+    get_quotex_base_price,
+    get_quotex_config
+)
 from backend.app.ai_lab.ai_providers import generate_multi_provider_analysis
 
 router = APIRouter(prefix="/ai-lab", tags=["ai-lab"])
@@ -211,7 +216,7 @@ async def analyze_market(
     settle_time_str = target_settle_dt.strftime("%H:%M:05 IST")
     seconds_to_entry = max(1, int((target_entry_dt - now_ist).total_seconds()))
 
-    payout_pct = 93.0 if "INR" in asset else (92.0 if "PKR" in asset else (91.0 if ("BRL" in asset or "JPY" in asset) else 88.0))
+    payout_pct = float(get_quotex_payout(asset))
     start_p = simulated_candle["start_price"]
     close_p = simulated_candle["close_price"]
     delta_val = round(close_p - start_p, 5)

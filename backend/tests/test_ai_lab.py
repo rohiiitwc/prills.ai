@@ -74,16 +74,19 @@ async def test_ai_lab_endpoints():
         assert otc_data["asset"] == "USDINR-OTC"
         assert "simulated_outcome" in otc_data
         assert otc_data["simulated_outcome"]["simulated_result"] in ["WIN", "LOSS", "DRAW"]
+        assert otc_data["quotex_trade_result"]["profit_percentage"] == 93
+        assert otc_data["candles"][-1]["close"] > 100.0
 
-        # 2. Analyze Live
+        # 2. Analyze Live EURCAD (76% payout)
         live_res = await client.post("/api/v1/ai-lab/analyze", json={
             "market_category": "LIVE",
-            "asset": "EURUSD"
+            "asset": "EURCAD"
         })
         assert live_res.status_code == 200
         live_data = live_res.json()
         assert live_data["market_category"] == "LIVE"
-        assert live_data["asset"] == "EURUSD"
+        assert live_data["asset"] == "EURCAD"
+        assert live_data["quotex_trade_result"]["profit_percentage"] == 76
 
         # 3. Stats endpoint
         stats_res = await client.get("/api/v1/ai-lab/stats")

@@ -47,56 +47,15 @@ import {
   generateAiLabAnalysis,
   fetchTelegramStatus 
 } from '../../lib/api';
+import {
+  QUOTEX_OTC_LIST,
+  QUOTEX_LIVE_LIST,
+  getQuotexPayout,
+  getQuotexConfig
+} from '../../lib/quotex_assets';
 
-const OTC_INSTRUMENTS = [
-  // --- Quotex Official OTC Currency Pairs (Have OTC on Quotex) ---
-  { symbol: 'USDINR-OTC', name: 'USD/INR (Quotex OTC)' },
-  { symbol: 'USDPKR-OTC', name: 'USD/PKR (Quotex OTC)' },
-  { symbol: 'USDBRL-OTC', name: 'USD/BRL (Quotex OTC)' },
-  { symbol: 'USDZAR-OTC', name: 'USD/ZAR (Quotex OTC)' },
-  { symbol: 'NZDCHF-OTC', name: 'NZD/CHF (Quotex OTC)' },
-  { symbol: 'USDMXN-OTC', name: 'USD/MXN (Quotex OTC)' },
-  { symbol: 'USDBDT-OTC', name: 'USD/BDT (Quotex OTC)' },
-  { symbol: 'USDEGP-OTC', name: 'USD/EGP (Quotex OTC)' },
-  { symbol: 'USDTRY-OTC', name: 'USD/TRY (Quotex OTC)' },
-  { symbol: 'USDARS-OTC', name: 'USD/ARS (Quotex OTC)' },
-  { symbol: 'USDCOP-OTC', name: 'USD/COP (Quotex OTC)' },
-  { symbol: 'USDIDR-OTC', name: 'USD/IDR (Quotex OTC)' },
-  { symbol: 'USDPHP-OTC', name: 'USD/PHP (Quotex OTC)' },
-  { symbol: 'USDDZD-OTC', name: 'USD/DZD (Quotex OTC)' },
-  { symbol: 'USDNGN-OTC', name: 'USD/NGN (Quotex OTC)' },
-];
-
-const LIVE_INSTRUMENTS = [
-  // --- Quotex Live Market Currency Pairs (Don't Have OTC on Quotex) ---
-  { symbol: 'USDJPY', name: 'USD/JPY (Spot Forex)' },
-  { symbol: 'EURJPY', name: 'EUR/JPY (Spot Forex)' },
-  { symbol: 'AUDJPY', name: 'AUD/JPY (Spot Forex)' },
-  { symbol: 'AUDUSD', name: 'AUD/USD (Spot Forex)' },
-  { symbol: 'EURCAD', name: 'EUR/CAD (Spot Forex)' },
-  { symbol: 'AUDCAD', name: 'AUD/CAD (Spot Forex)' },
-  { symbol: 'EURUSD', name: 'EUR/USD (Spot Forex)' },
-  { symbol: 'GBPUSD', name: 'GBP/USD (Spot Forex)' },
-  { symbol: 'USDCHF', name: 'USD/CHF (Spot Forex)' },
-  { symbol: 'USDCAD', name: 'USD/CAD (Spot Forex)' },
-  { symbol: 'NZDUSD', name: 'NZD/USD (Spot Forex)' },
-  { symbol: 'EURGBP', name: 'EUR/GBP (Spot Forex)' },
-  { symbol: 'GBPJPY', name: 'GBP/JPY (Spot Forex)' },
-  { symbol: 'CADJPY', name: 'CAD/JPY (Spot Forex)' },
-  { symbol: 'CHFJPY', name: 'CHF/JPY (Spot Forex)' },
-  { symbol: 'NZDJPY', name: 'NZD/JPY (Spot Forex)' },
-  { symbol: 'EURAUD', name: 'EUR/AUD (Spot Forex)' },
-  { symbol: 'EURCHF', name: 'EUR/CHF (Spot Forex)' },
-  { symbol: 'EURNZD', name: 'EUR/NZD (Spot Forex)' },
-  { symbol: 'GBPAUD', name: 'GBP/AUD (Spot Forex)' },
-  { symbol: 'GBPCAD', name: 'GBP/CAD (Spot Forex)' },
-  { symbol: 'GBPCHF', name: 'GBP/CHF (Spot Forex)' },
-  { symbol: 'GBPNZD', name: 'GBP/NZD (Spot Forex)' },
-  { symbol: 'AUDCHF', name: 'AUD/CHF (Spot Forex)' },
-  { symbol: 'AUDNZD', name: 'AUD/NZD (Spot Forex)' },
-  { symbol: 'CADCHF', name: 'CAD/CHF (Spot Forex)' },
-  { symbol: 'NZDCAD', name: 'NZD/CAD (Spot Forex)' },
-];
+const OTC_INSTRUMENTS = QUOTEX_OTC_LIST;
+const LIVE_INSTRUMENTS = QUOTEX_LIVE_LIST;
 
 export default function AILabPage() {
   const [activeTab, setActiveTab] = useState<'OTC' | 'LIVE'>('OTC');
@@ -127,16 +86,7 @@ export default function AILabPage() {
   const [tickDirection, setTickDirection] = useState<'UP' | 'DOWN'>('UP');
 
   const getPayoutForAsset = (asset: string) => {
-    if (asset.includes('INR')) return 93;
-    if (asset.includes('PKR')) return 92;
-    if (asset.includes('BRL') || asset.includes('JPY')) return 91;
-    if (asset.includes('ZAR')) return 90;
-    if (asset.includes('NZDCHF') || asset.includes('EURJPY')) return 88;
-    if (asset.includes('MXN') || asset.includes('AUDJPY')) return 87;
-    if (asset.includes('AUDUSD')) return 85;
-    if (asset.includes('AUDCAD')) return 80;
-    if (asset.includes('EURCAD')) return 76;
-    return 85;
+    return getQuotexPayout(asset);
   };
 
   // 1-second master clock interval & second-to-second Quotex price action sync
@@ -360,8 +310,10 @@ export default function AILabPage() {
     delta: `${(currentAnalysis.simulated_candle.close_price - upcomingSignal.strike_price) >= 0 ? '+' : ''}${Math.round((currentAnalysis.simulated_candle.close_price - upcomingSignal.strike_price) * 10000) / 10000}`,
     candle_outcome: currentAnalysis.simulated_outcome.candle_outcome,
     trade_outcome: currentAnalysis.simulated_outcome.simulated_result,
-    profit_percentage: upcomingSignal.asset.includes('INR') ? 93 : (upcomingSignal.asset.includes('PKR') ? 92 : 91),
-    payout_label: currentAnalysis.simulated_outcome.simulated_result === 'WIN' ? '+93% PROFIT' : '-100% CAPITAL LOSS',
+    profit_percentage: getQuotexPayout(upcomingSignal.asset),
+    payout_label: currentAnalysis.simulated_outcome.simulated_result === 'WIN' 
+      ? `+${getQuotexPayout(upcomingSignal.asset)}% PROFIT` 
+      : (currentAnalysis.simulated_outcome.simulated_result === 'LOSS' ? '-100% CAPITAL LOSS' : '0% STRIKE REFUND'),
     settlement_delay_seconds: 5,
     settled_at: now.toLocaleTimeString('en-IN', { timeZone: 'Asia/Kolkata', hour12: false }) + ' IST',
     verification_notice: 'Settlement verified directly from Quotex platform execution terminal (5-second verification window).'
@@ -1339,7 +1291,7 @@ export default function AILabPage() {
                       <option value="ALL">⭐ ALL PAIRS (Auto-Scan Quotex for Highest Confidence Signal)</option>
                       {(activeTab === 'OTC' ? OTC_INSTRUMENTS : LIVE_INSTRUMENTS).map(inst => (
                         <option key={inst.symbol} value={inst.symbol}>
-                          {inst.name} ({inst.symbol})
+                          {inst.name} — {inst.payout}% Profit ({inst.change24h})
                         </option>
                       ))}
                     </select>

@@ -3,6 +3,7 @@ import random
 from datetime import datetime, timezone, timedelta
 from typing import List, Dict, Any, Optional
 import pytz
+from backend.app.ai_lab.quotex_assets import get_quotex_base_price, get_quotex_payout
 
 def get_ist_now() -> datetime:
     tz = pytz.timezone("Asia/Kolkata")
@@ -117,87 +118,7 @@ INSTRUMENT_BASE_PRICES = {
 }
 
 def get_base_price_for_asset(asset: str) -> float:
-    cleaned = asset.strip().upper().replace("/", "").replace(" ", "")
-    if cleaned in INSTRUMENT_BASE_PRICES:
-        return INSTRUMENT_BASE_PRICES[cleaned]
-    if f"{cleaned}-OTC" in INSTRUMENT_BASE_PRICES:
-        return INSTRUMENT_BASE_PRICES[f"{cleaned}-OTC"]
-    upper = cleaned
-    if "BTC" in upper:
-        return 71850.0
-    if "ETH" in upper:
-        return 2640.0
-    if "XAU" in upper or "GOLD" in upper:
-        return 2745.0
-    if "IDR" in upper:
-        return 15720.0
-    if "COP" in upper:
-        return 4420.0
-    if "NGN" in upper:
-        return 1650.0
-    if "ARS" in upper:
-        return 995.0
-    if "JPY" in upper:
-        return 157.42
-    if "INR" in upper:
-        return 105.10
-    if "PKR" in upper:
-        return 278.40
-    if "BRL" in upper:
-        return 5.4420
-    if "ZAR" in upper:
-        return 16.7220
-    if "MXN" in upper:
-        return 18.7880
-    if "BDT" in upper:
-        return 120.50
-    if "EGP" in upper:
-        return 48.90
-    if "TRY" in upper:
-        return 49.940
-    if "EURCAD" in upper:
-        return 1.5572
-    if "AUDCAD" in upper:
-        return 0.9813
-    if "AUDUSD" in upper:
-        return 0.7034
-    if "EURUSD" in upper:
-        return 1.1161
-    if "GBPUSD" in upper:
-        return 1.3391
-    if "DZD" in upper:
-        return 133.50
-    if "US30" in upper:
-        return 42300.0
-    if "US100" in upper or "NDX" in upper or "NAS" in upper:
-        return 20450.0
-    if "GER40" in upper or "DAX" in upper:
-        return 19450.0
-    if "US500" in upper or "SPX" in upper:
-        return 5810.0
-    if "UK100" in upper or "FTSE" in upper:
-        return 8240.0
-    if "AAPL" in upper:
-        return 232.50
-    if "MSFT" in upper:
-        return 435.80
-    if "AMZN" in upper:
-        return 188.20
-    if "GOOGL" in upper:
-        return 178.60
-    if "TSLA" in upper:
-        return 260.40
-    if "META" in upper:
-        return 585.50
-    if "NFLX" in upper:
-        return 750.20
-    if "NVDA" in upper:
-        return 141.50
-    if "BA" in upper:
-        return 156.40
-    if "OIL" in upper or "CRUDE" in upper or "BRENT" in upper:
-        return 70.0
-    return 1.0850
+    return get_quotex_base_price(asset)
 
 def round_price_for_asset(price: float, base_price: float) -> float:
     if base_price >= 1000:
