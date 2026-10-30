@@ -8,7 +8,7 @@ logging.basicConfig(level=logging.INFO, format="%(asctime)s [%(levelname)s] %(me
 logger = logging.getLogger("auto_sync")
 
 last_git_push_time = 0
-GIT_PUSH_COOLDOWN = 120  # Minimum 2 minutes between git pushes to avoid spamming GitHub
+GIT_PUSH_COOLDOWN = 600  # Minimum 10 minutes between automated git pushes to keep Vercel build queue clear
 
 async def sync_loop():
     global last_git_push_time
