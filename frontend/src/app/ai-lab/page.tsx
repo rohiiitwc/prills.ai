@@ -49,25 +49,95 @@ import {
 } from '../../lib/api';
 
 const OTC_INSTRUMENTS = [
-  { symbol: 'EURUSD-OTC', name: 'Euro / US Dollar (Quotex OTC)' },
-  { symbol: 'USDJPY-OTC', name: 'US Dollar / Japanese Yen (Quotex OTC)' },
-  { symbol: 'GBPUSD-OTC', name: 'British Pound / US Dollar (Quotex OTC)' },
-  { symbol: 'USDINR-OTC', name: 'US Dollar / Indian Rupee (Quotex OTC)' },
-  { symbol: 'USDMXN-OTC', name: 'US Dollar / Mexican Peso (Quotex OTC)' },
-  { symbol: 'USDNGN-OTC', name: 'US Dollar / Nigerian Naira (Quotex OTC)' },
-  { symbol: 'USDBDT-OTC', name: 'US Dollar / Bangladeshi Taka (Quotex OTC)' },
-  { symbol: 'USDTRY-OTC', name: 'US Dollar / Turkish Lira (Quotex OTC)' },
-  { symbol: 'USDCHF-OTC', name: 'US Dollar / Swiss Franc (Quotex OTC)' },
-  { symbol: 'USDCAD-OTC', name: 'US Dollar / Canadian Dollar (Quotex OTC)' },
+  // --- Major Currencies (Quotex OTC) ---
+  { symbol: 'EURUSD-OTC', name: 'EUR/USD (Quotex OTC)' },
+  { symbol: 'GBPUSD-OTC', name: 'GBP/USD (Quotex OTC)' },
+  { symbol: 'USDJPY-OTC', name: 'USD/JPY (Quotex OTC)' },
+  { symbol: 'USDCHF-OTC', name: 'USD/CHF (Quotex OTC)' },
+  { symbol: 'USDCAD-OTC', name: 'USD/CAD (Quotex OTC)' },
+  { symbol: 'AUDUSD-OTC', name: 'AUD/USD (Quotex OTC)' },
+  { symbol: 'NZDUSD-OTC', name: 'NZD/USD (Quotex OTC)' },
+  { symbol: 'EURGBP-OTC', name: 'EUR/GBP (Quotex OTC)' },
+  { symbol: 'EURJPY-OTC', name: 'EUR/JPY (Quotex OTC)' },
+  { symbol: 'GBPJPY-OTC', name: 'GBP/JPY (Quotex OTC)' },
+  { symbol: 'AUDJPY-OTC', name: 'AUD/JPY (Quotex OTC)' },
+  { symbol: 'CADJPY-OTC', name: 'CAD/JPY (Quotex OTC)' },
+  { symbol: 'CHFJPY-OTC', name: 'CHF/JPY (Quotex OTC)' },
+  { symbol: 'NZDJPY-OTC', name: 'NZD/JPY (Quotex OTC)' },
+  { symbol: 'EURAUD-OTC', name: 'EUR/AUD (Quotex OTC)' },
+  { symbol: 'EURCAD-OTC', name: 'EUR/CAD (Quotex OTC)' },
+  { symbol: 'EURCHF-OTC', name: 'EUR/CHF (Quotex OTC)' },
+  { symbol: 'EURNZD-OTC', name: 'EUR/NZD (Quotex OTC)' },
+  { symbol: 'GBPAUD-OTC', name: 'GBP/AUD (Quotex OTC)' },
+  { symbol: 'GBPCAD-OTC', name: 'GBP/CAD (Quotex OTC)' },
+  { symbol: 'GBPCHF-OTC', name: 'GBP/CHF (Quotex OTC)' },
+  { symbol: 'GBPNZD-OTC', name: 'GBP/NZD (Quotex OTC)' },
+  { symbol: 'AUDCHF-OTC', name: 'AUD/CHF (Quotex OTC)' },
+  { symbol: 'AUDNZD-OTC', name: 'AUD/NZD (Quotex OTC)' },
+  { symbol: 'CADCHF-OTC', name: 'CAD/CHF (Quotex OTC)' },
+  { symbol: 'NZDCAD-OTC', name: 'NZD/CAD (Quotex OTC)' },
+  { symbol: 'NZDCHF-OTC', name: 'NZD/CHF (Quotex OTC)' },
+  // --- High Payout Exotic Currencies (Quotex OTC) ---
+  { symbol: 'USDINR-OTC', name: 'USD/INR (Quotex OTC)' },
+  { symbol: 'USDBDT-OTC', name: 'USD/BDT (Quotex OTC)' },
+  { symbol: 'USDPKR-OTC', name: 'USD/PKR (Quotex OTC)' },
+  { symbol: 'USDEGP-OTC', name: 'USD/EGP (Quotex OTC)' },
+  { symbol: 'USDTRY-OTC', name: 'USD/TRY (Quotex OTC)' },
+  { symbol: 'USDBRL-OTC', name: 'USD/BRL (Quotex OTC)' },
+  { symbol: 'USDMXN-OTC', name: 'USD/MXN (Quotex OTC)' },
+  { symbol: 'USDNGN-OTC', name: 'USD/NGN (Quotex OTC)' },
+  { symbol: 'USDARS-OTC', name: 'USD/ARS (Quotex OTC)' },
+  { symbol: 'USDCOP-OTC', name: 'USD/COP (Quotex OTC)' },
+  { symbol: 'USDIDR-OTC', name: 'USD/IDR (Quotex OTC)' },
+  { symbol: 'USDPHP-OTC', name: 'USD/PHP (Quotex OTC)' },
+  { symbol: 'USDZAR-OTC', name: 'USD/ZAR (Quotex OTC)' },
+  { symbol: 'USDDZD-OTC', name: 'USD/DZD (Quotex OTC)' },
+  // --- Commodities & Crypto (Quotex OTC) ---
+  { symbol: 'XAUUSD-OTC', name: 'Gold / USD (Quotex OTC)' },
+  { symbol: 'XAGUSD-OTC', name: 'Silver / USD (Quotex OTC)' },
+  { symbol: 'USCRUDE-OTC', name: 'US Crude Oil (Quotex OTC)' },
+  { symbol: 'UKBRENT-OTC', name: 'UK Brent Oil (Quotex OTC)' },
+  { symbol: 'BTCUSD-OTC', name: 'Bitcoin / USD (Quotex OTC)' },
+  { symbol: 'ETHUSD-OTC', name: 'Ethereum / USD (Quotex OTC)' },
 ];
 
 const LIVE_INSTRUMENTS = [
-  { symbol: 'EURUSD', name: 'Euro / US Dollar (Spot Forex)' },
-  { symbol: 'GBPJPY', name: 'British Pound / Japanese Yen (Spot Forex)' },
-  { symbol: 'USDCAD', name: 'US Dollar / Canadian Dollar (Spot Forex)' },
-  { symbol: 'USDJPY', name: 'US Dollar / Japanese Yen (Spot Forex)' },
-  { symbol: 'AUDUSD', name: 'Australian Dollar / US Dollar (Spot Forex)' },
-  { symbol: 'EURGBP', name: 'Euro / British Pound (Spot Forex)' },
+  // --- Major Currencies (Quotex Live Market) ---
+  { symbol: 'EURUSD', name: 'EUR/USD (Spot Forex)' },
+  { symbol: 'GBPUSD', name: 'GBP/USD (Spot Forex)' },
+  { symbol: 'USDJPY', name: 'USD/JPY (Spot Forex)' },
+  { symbol: 'USDCHF', name: 'USD/CHF (Spot Forex)' },
+  { symbol: 'USDCAD', name: 'USD/CAD (Spot Forex)' },
+  { symbol: 'AUDUSD', name: 'AUD/USD (Spot Forex)' },
+  { symbol: 'NZDUSD', name: 'NZD/USD (Spot Forex)' },
+  { symbol: 'EURGBP', name: 'EUR/GBP (Spot Forex)' },
+  { symbol: 'EURJPY', name: 'EUR/JPY (Spot Forex)' },
+  { symbol: 'GBPJPY', name: 'GBP/JPY (Spot Forex)' },
+  { symbol: 'AUDCAD', name: 'AUD/CAD (Spot Forex)' },
+  { symbol: 'AUDCHF', name: 'AUD/CHF (Spot Forex)' },
+  { symbol: 'AUDJPY', name: 'AUD/JPY (Spot Forex)' },
+  { symbol: 'AUDNZD', name: 'AUD/NZD (Spot Forex)' },
+  { symbol: 'CADCHF', name: 'CAD/CHF (Spot Forex)' },
+  { symbol: 'CADJPY', name: 'CAD/JPY (Spot Forex)' },
+  { symbol: 'CHFJPY', name: 'CHF/JPY (Spot Forex)' },
+  { symbol: 'EURAUD', name: 'EUR/AUD (Spot Forex)' },
+  { symbol: 'EURCAD', name: 'EUR/CAD (Spot Forex)' },
+  { symbol: 'EURCHF', name: 'EUR/CHF (Spot Forex)' },
+  { symbol: 'EURNZD', name: 'EUR/NZD (Spot Forex)' },
+  { symbol: 'GBPAUD', name: 'GBP/AUD (Spot Forex)' },
+  { symbol: 'GBPCAD', name: 'GBP/CAD (Spot Forex)' },
+  { symbol: 'GBPCHF', name: 'GBP/CHF (Spot Forex)' },
+  { symbol: 'GBPNZD', name: 'GBP/NZD (Spot Forex)' },
+  { symbol: 'NZDCAD', name: 'NZD/CAD (Spot Forex)' },
+  { symbol: 'NZDCHF', name: 'NZD/CHF (Spot Forex)' },
+  { symbol: 'NZDJPY', name: 'NZD/JPY (Spot Forex)' },
+  // --- Commodities & Crypto (Quotex Live Market) ---
+  { symbol: 'XAUUSD', name: 'Gold / USD (Spot Forex)' },
+  { symbol: 'XAGUSD', name: 'Silver / USD (Spot Forex)' },
+  { symbol: 'USOIL', name: 'US Crude Oil (Spot Forex)' },
+  { symbol: 'UKBRENT', name: 'UK Brent Crude (Spot Forex)' },
+  { symbol: 'BTCUSD', name: 'Bitcoin / USD (Crypto)' },
+  { symbol: 'ETHUSD', name: 'Ethereum / USD (Crypto)' },
 ];
 
 export default function AILabPage() {
@@ -78,14 +148,11 @@ export default function AILabPage() {
   const [historyItems, setHistoryItems] = useState<AILabHistoryItem[]>([]);
   const [historyFilterAsset, setHistoryFilterAsset] = useState<string>('ALL');
   
-  // Loading & generation states
+  // Loading & generation states (Strictly manual: NO automatic signal generation)
   const [isAnalyzing, setIsAnalyzing] = useState(false);
   const [analysisStep, setAnalysisStep] = useState<string>('');
   const [analysisSecondsLeft, setAnalysisSecondsLeft] = useState<number>(30);
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
-  
-  // Auto-scan feature: automatically analyzes 30 seconds before every 1-minute candle
-  const [autoScanEnabled, setAutoScanEnabled] = useState<boolean>(true);
   
   // Real-time IST clock state
   const [now, setNow] = useState<Date>(new Date());
@@ -97,9 +164,6 @@ export default function AILabPage() {
   
   // Stream connection status for Navbar
   const [tgStatus, setTgStatus] = useState<string>('CONNECTED');
-
-  // Ref to track if auto-scan has already triggered for current minute's :30 mark
-  const lastTriggeredMinuteRef = useRef<number>(-1);
 
   // 1-second master clock interval
   useEffect(() => {
@@ -148,8 +212,8 @@ export default function AILabPage() {
     }
   };
 
-  // Main generator function: takes 30 seconds to analyze Quotex platform charts
-  const executeAnalysis = async (isAuto: boolean = false) => {
+  // Main generator function: takes 30 seconds to analyze Quotex platform charts (Strictly Manual)
+  const executeAnalysis = async () => {
     if (isAnalyzing) return;
     setIsAnalyzing(true);
     setErrorMsg(null);
@@ -157,42 +221,36 @@ export default function AILabPage() {
     setAnalysisSecondsLeft(30);
 
     try {
-      if (!isAuto) {
-        // Run dedicated 30-second analyzing progress
-        const startTime = Date.now();
-        const durationMs = 30000;
-        const fetchPromise = generateAiLabAnalysis(activeTab, selectedAsset);
+      // Run dedicated 30-second analyzing progress
+      const startTime = Date.now();
+      const durationMs = 30000;
+      const fetchPromise = generateAiLabAnalysis(activeTab, selectedAsset);
 
-        await new Promise<void>((resolve) => {
-          const interval = setInterval(() => {
-            const elapsed = Date.now() - startTime;
-            const remaining = Math.max(0, Math.ceil((durationMs - elapsed) / 1000));
-            setAnalysisSecondsLeft(remaining);
+      await new Promise<void>((resolve) => {
+        const interval = setInterval(() => {
+          const elapsed = Date.now() - startTime;
+          const remaining = Math.max(0, Math.ceil((durationMs - elapsed) / 1000));
+          setAnalysisSecondsLeft(remaining);
 
-            if (remaining > 22) {
-              setAnalysisStep(`[Step 1/4] Extracting 1-minute candlestick telemetry for ${selectedAsset} on Quotex...`);
-            } else if (remaining > 15) {
-              setAnalysisStep(`[Step 2/4] Evaluating Price Action, RSI (14), EMA 9 vs SMA 20, and Bollinger Bands...`);
-            } else if (remaining > 7) {
-              setAnalysisStep(`[Step 3/4] Requesting Tri-Model Consensus from OpenAI, Google Gemini, and Groq...`);
-            } else {
-              setAnalysisStep(`[Step 4/4] Verifying 85% Minimum Confidence Gate & Formatting Entry Time (HH:MM:00 IST)...`);
-            }
+          if (remaining > 22) {
+            setAnalysisStep(`[Step 1/4] Extracting 1-minute candlestick telemetry for ${selectedAsset} on Quotex...`);
+          } else if (remaining > 15) {
+            setAnalysisStep(`[Step 2/4] Evaluating Price Action, RSI (14), EMA 9 vs SMA 20, and Bollinger Bands...`);
+          } else if (remaining > 7) {
+            setAnalysisStep(`[Step 3/4] Requesting Tri-Model Consensus from OpenAI, Google Gemini, and Groq...`);
+          } else {
+            setAnalysisStep(`[Step 4/4] Verifying 85% Minimum Confidence Gate & Formatting Entry Time (HH:MM:00 IST)...`);
+          }
 
-            if (remaining <= 0) {
-              clearInterval(interval);
-              resolve();
-            }
-          }, 400);
-        });
+          if (remaining <= 0) {
+            clearInterval(interval);
+            resolve();
+          }
+        }, 400);
+      });
 
-        const payload = await fetchPromise;
-        setCurrentAnalysis(payload);
-      } else {
-        setAnalysisStep('Scanning Quotex 1-minute candlestick telemetry...');
-        const payload = await generateAiLabAnalysis(activeTab, selectedAsset);
-        setCurrentAnalysis(payload);
-      }
+      const payload = await fetchPromise;
+      setCurrentAnalysis(payload);
 
       setReplaySecond(60);
       await loadStats();
@@ -207,28 +265,11 @@ export default function AILabPage() {
     }
   };
 
-  // Auto-scan trigger: checks every second. At second 30 of any minute, trigger analysis!
-  useEffect(() => {
-    if (!autoScanEnabled || isAnalyzing) return;
-
-    const currentMinute = now.getMinutes();
-    const currentSecond = now.getSeconds();
-
-    // Trigger exactly at second 30 if we haven't triggered yet for this minute
-    if (currentSecond >= 30 && currentSecond <= 34 && lastTriggeredMinuteRef.current !== currentMinute) {
-      lastTriggeredMinuteRef.current = currentMinute;
-      executeAnalysis(true);
-    }
-  }, [now, autoScanEnabled, isAnalyzing, activeTab, selectedAsset]);
-
   // Compute countdown metrics for Upcoming Signal
   const upcomingSignal = currentAnalysis?.upcoming_signal;
 
   const timingInfo = useMemo(() => {
     const currentSeconds = now.getSeconds();
-    
-    // Seconds until next :30 mark (when next signal generates)
-    const secToNextScan = currentSeconds < 30 ? (30 - currentSeconds) : (90 - currentSeconds);
 
     // If an upcoming signal is active, compute time to its entry
     let secondsToEntry = 0;
@@ -257,7 +298,6 @@ export default function AILabPage() {
 
     return {
       currentSeconds,
-      secToNextScan,
       secondsToEntry,
       isEntryDue,
       isTradeInFlight,
@@ -403,25 +443,12 @@ export default function AILabPage() {
                 </button>
               </div>
 
-              {/* Auto-Scan Toggle & Timing Status */}
-              <div className="flex items-center gap-3 bg-slate-950/80 border border-slate-800 p-2 rounded-2xl">
-                <div className="flex items-center gap-2 px-2">
-                  <Radio className={`w-3.5 h-3.5 ${autoScanEnabled ? 'text-emerald-400 animate-pulse' : 'text-slate-600'}`} />
-                  <span className="text-xs font-bold text-slate-300">
-                    Auto-Scan (30s Before Every Minute):
-                  </span>
-                </div>
-                <button
-                  type="button"
-                  onClick={() => setAutoScanEnabled(!autoScanEnabled)}
-                  className={`px-3 py-1.5 rounded-xl text-xs font-black transition-all cursor-pointer ${
-                    autoScanEnabled
-                      ? 'bg-emerald-600 text-white shadow-emerald-900/40 shadow-md'
-                      : 'bg-slate-800 text-slate-400 hover:text-white'
-                  }`}
-                >
-                  {autoScanEnabled ? 'ENABLED' : 'PAUSED'}
-                </button>
+              {/* Manual On-Demand Indicator (No Auto-Generation) */}
+              <div className="flex items-center gap-2.5 bg-slate-950/80 border border-slate-800 px-3.5 py-2 rounded-2xl shadow-inner">
+                <span className="w-2.5 h-2.5 rounded-full bg-cyan-400"></span>
+                <span className="text-xs font-bold text-slate-300">
+                  Signal Generation: <strong className="text-cyan-400 font-mono">ON DEMAND</strong> (Manual Only)
+                </span>
               </div>
             </div>
           </div>
@@ -789,7 +816,7 @@ export default function AILabPage() {
                   <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-3 shrink-0">
                     <button
                       type="button"
-                      onClick={() => executeAnalysis(false)}
+                      onClick={() => executeAnalysis()}
                       disabled={isAnalyzing}
                       className="px-6 py-3.5 rounded-xl text-xs font-black uppercase tracking-wider bg-gradient-to-r from-cyan-500 via-blue-600 to-cyan-500 hover:from-cyan-400 hover:to-blue-500 text-slate-950 font-black shadow-lg shadow-cyan-500/25 active:scale-95 transition-all flex items-center justify-center gap-2 cursor-pointer"
                     >
@@ -802,7 +829,7 @@ export default function AILabPage() {
                 <div className="mt-6 pt-4 border-t border-slate-800/80 flex flex-col sm:flex-row sm:items-center justify-between gap-2 text-xs font-mono text-slate-400">
                   <div className="flex items-center gap-2">
                     <Clock className="w-4 h-4 text-cyan-400" />
-                    <span>Auto-Scan in: <strong className="text-white">{timingInfo.secToNextScan}s</strong> (takes 30s analysis before entry)</span>
+                    <span>Signal Mode: <strong className="text-white">Manual 30s Analysis (No Automatic Generation)</strong></span>
                   </div>
                   <span>Exact Entry Time: Always at :00 Seconds Mark (IST)</span>
                 </div>
@@ -914,7 +941,7 @@ export default function AILabPage() {
 
                   <button
                     type="button"
-                    onClick={() => executeAnalysis(false)}
+                    onClick={() => executeAnalysis()}
                     disabled={isAnalyzing}
                     className={`w-full sm:w-auto px-6 py-3 rounded-xl text-xs font-black uppercase tracking-wider transition-all duration-300 flex items-center justify-center gap-2 shadow-lg cursor-pointer ${
                       isAnalyzing

@@ -497,9 +497,40 @@ function getAiLabHistoryFallback(market?: string | null, asset?: string | null) 
   };
 }
 
+function getBasePriceForAsset(asset: string): number {
+  const upper = asset.toUpperCase();
+  if (upper.includes('BTC')) return 71850.0;
+  if (upper.includes('ETH')) return 2640.0;
+  if (upper.includes('XAU') || upper.includes('GOLD')) return 2745.0;
+  if (upper.includes('XAG') || upper.includes('SILVER')) return 33.80;
+  if (upper.includes('CRUDE') || upper.includes('OIL') || upper.includes('BRENT')) return 70.0;
+  if (upper.includes('IDR')) return 15720.0;
+  if (upper.includes('COP')) return 4420.0;
+  if (upper.includes('NGN')) return 1650.0;
+  if (upper.includes('ARS')) return 995.0;
+  if (upper.includes('PKR')) return 278.40;
+  if (upper.includes('DZD')) return 133.50;
+  if (upper.includes('BDT')) return 120.50;
+  if (upper.includes('INR')) return 84.15;
+  if (upper.includes('PHP')) return 58.20;
+  if (upper.includes('EGP')) return 48.90;
+  if (upper.includes('TRY')) return 34.28;
+  if (upper.includes('MXN')) return 19.82;
+  if (upper.includes('ZAR')) return 17.65;
+  if (upper.includes('JPY')) return 152.45;
+  if (upper.includes('BRL')) return 5.75;
+  return 1.0862;
+}
+
+function roundPriceForAsset(price: number, basePrice: number): number {
+  if (basePrice >= 1000) return Math.round(price * 100) / 100;
+  if (basePrice >= 100) return Math.round(price * 1000) / 1000;
+  return Math.round(price * 100000) / 100000;
+}
+
 function runServerlessAiAnalysis(market_category: string, asset: string) {
   const isOtc = market_category === 'OTC';
-  const basePrice = asset.includes('JPY') ? 152.45 : (asset.includes('NGN') ? 1650.0 : (asset.includes('MXN') ? 19.82 : 1.0850));
+  const basePrice = getBasePriceForAsset(asset);
   const volatility = basePrice * 0.00035;
 
   // Build 30 synthetic historical candles
@@ -510,10 +541,10 @@ function runServerlessAiAnalysis(market_category: string, asset: string) {
   for (let i = 30; i > 0; i--) {
     const t = new Date(now.getTime() - i * 60000);
     const drift = Math.sin(i * 0.3) * (volatility * 0.5) + (Math.random() - 0.5) * volatility;
-    const o = Math.round(curr * 100000) / 100000;
-    const c = Math.round((o + drift) * 100000) / 100000;
-    const h = Math.round(Math.max(o, c) + Math.random() * volatility * 0.5 * 100000) / 100000;
-    const l = Math.round(Math.min(o, c) - Math.random() * volatility * 0.5 * 100000) / 100000;
+    const o = roundPriceForAsset(curr, basePrice);
+    const c = roundPriceForAsset(o + drift, basePrice);
+    const h = roundPriceForAsset(Math.max(o, c) + Math.random() * volatility * 0.5, basePrice);
+    const l = roundPriceForAsset(Math.min(o, c) - Math.random() * volatility * 0.5, basePrice);
     candles.push({
       timestamp: t.toLocaleTimeString('en-IN', { timeZone: 'Asia/Kolkata', hour12: false, hour: '2-digit', minute: '2-digit' }) + ' IST',
       iso_time: t.toISOString(),
@@ -529,10 +560,10 @@ function runServerlessAiAnalysis(market_category: string, asset: string) {
 
   const lastClose = candles[candles.length - 1].close;
   const rsi = Math.round((48 + Math.random() * 22) * 10) / 10;
-  const ema9 = Math.round((lastClose - volatility * 0.1) * 100000) / 100000;
-  const sma20 = Math.round((lastClose - volatility * 0.3) * 100000) / 100000;
-  const bb_upper = Math.round((lastClose + volatility * 1.8) * 100000) / 100000;
-  const bb_lower = Math.round((lastClose - volatility * 1.8) * 100000) / 100000;
+  const ema9 = roundPriceForAsset(lastClose - volatility * 0.1, basePrice);
+  const sma20 = roundPriceForAsset(lastClose - volatility * 0.3, basePrice);
+  const bb_upper = roundPriceForAsset(lastClose + volatility * 1.8, basePrice);
+  const bb_lower = roundPriceForAsset(lastClose - volatility * 1.8, basePrice);
   const pattern = rsi > 55 ? 'Bullish Engulfing' : (rsi < 45 ? 'Bearish Engulfing' : 'Doji (Indecision)');
   const primary_trend = rsi > 52 ? 'BULLISH' : (rsi < 48 ? 'BEARISH' : 'RANGING');
 
@@ -540,13 +571,13 @@ function runServerlessAiAnalysis(market_category: string, asset: string) {
     rsi,
     ema9,
     sma20,
-    macd_line: Math.round(volatility * 0.4 * 100000) / 100000,
-    macd_signal: Math.round(volatility * 0.25 * 100000) / 100000,
-    macd_hist: Math.round(volatility * 0.15 * 100000) / 100000,
+    macd_line: roundPriceForAsset(volatility * 0.4, basePrice),
+    macd_signal: roundPriceForAsset(volatility * 0.25, basePrice),
+    macd_hist: roundPriceForAsset(volatility * 0.15, basePrice),
     bb_upper,
     bb_lower,
-    support: Math.round((lastClose - volatility * 1.2) * 100000) / 100000,
-    resistance: Math.round((lastClose + volatility * 1.2) * 100000) / 100000,
+    support: roundPriceForAsset(lastClose - volatility * 1.2, basePrice),
+    resistance: roundPriceForAsset(lastClose + volatility * 1.2, basePrice),
     pattern,
     primary_trend,
     volatility_status: 'NORMAL'
@@ -560,7 +591,7 @@ function runServerlessAiAnalysis(market_category: string, asset: string) {
   const bias = primary_trend === 'BULLISH' ? volatility * 0.12 : (primary_trend === 'BEARISH' ? -volatility * 0.12 : 0);
 
   for (let s = 0; s <= 60; s += 5) {
-    tickPrice = Math.round((tickPrice + (Math.random() - 0.48) * volatility * 0.5 + bias) * 100000) / 100000;
+    tickPrice = roundPriceForAsset(tickPrice + (Math.random() - 0.48) * volatility * 0.5 + bias, basePrice);
     simHigh = Math.max(simHigh, tickPrice);
     simLow = Math.min(simLow, tickPrice);
     ticks.push({ second: s, price: tickPrice });

@@ -8,27 +8,127 @@ def get_ist_now() -> datetime:
     tz = pytz.timezone("Asia/Kolkata")
     return datetime.now(tz)
 
-# Base price anchor points for popular instruments
+# Base price anchor points for all Quotex instruments (OTC and Live)
 INSTRUMENT_BASE_PRICES = {
-    # Quotex OTC Instruments (24/7 High Payout Active Pairs)
+    # --- Quotex 24/7 OTC Currency Pairs ---
     "EURUSD-OTC": 1.08620,
-    "USDJPY-OTC": 152.450,
     "GBPUSD-OTC": 1.29850,
-    "USDINR-OTC": 84.150,
-    "USDMXN-OTC": 19.8250,
-    "USDNGN-OTC": 1650.00,
-    "USDBDT-OTC": 120.50,
-    "USDTRY-OTC": 34.280,
+    "USDJPY-OTC": 152.450,
     "USDCHF-OTC": 0.86550,
     "USDCAD-OTC": 1.38950,
-    # Live Market Instruments
+    "EURJPY-OTC": 165.620,
+    "EURGBP-OTC": 0.83650,
+    "GBPJPY-OTC": 197.850,
+    "AUDUSD-OTC": 0.65800,
+    "NZDUSD-OTC": 0.59750,
+    "USDINR-OTC": 84.150,
+    "USDBDT-OTC": 120.50,
+    "USDPKR-OTC": 278.40,
+    "USDEGP-OTC": 48.90,
+    "USDTRY-OTC": 34.280,
+    "USDBRL-OTC": 5.750,
+    "USDMXN-OTC": 19.825,
+    "USDNGN-OTC": 1650.00,
+    "USDARS-OTC": 995.00,
+    "USDCOP-OTC": 4420.00,
+    "USDIDR-OTC": 15720.00,
+    "USDPHP-OTC": 58.20,
+    "USDZAR-OTC": 17.65,
+    "USDDZD-OTC": 133.50,
+    "AUDJPY-OTC": 100.250,
+    "AUDNZD-OTC": 1.10150,
+    "AUDCHF-OTC": 0.56950,
+    "CADJPY-OTC": 109.720,
+    "CADCHF-OTC": 0.62300,
+    "CHFJPY-OTC": 176.150,
+    "EURCHF-OTC": 0.94020,
+    "EURCAD-OTC": 1.50950,
+    "EURNZD-OTC": 1.81800,
+    "EURAUD-OTC": 1.65080,
+    "GBPAUD-OTC": 1.97350,
+    "GBPCAD-OTC": 1.80450,
+    "GBPCHF-OTC": 1.12400,
+    "GBPNZD-OTC": 2.17300,
+    "NZDJPY-OTC": 91.050,
+    "NZDCAD-OTC": 0.83020,
+    "NZDCHF-OTC": 0.51700,
+    # --- Quotex 24/7 OTC Commodities & Crypto ---
+    "XAUUSD-OTC": 2745.50,
+    "XAGUSD-OTC": 33.80,
+    "USCRUDE-OTC": 69.25,
+    "UKBRENT-OTC": 73.10,
+    "BTCUSD-OTC": 71850.00,
+    "ETHUSD-OTC": 2640.00,
+    # --- Quotex Live Market Instruments ---
     "EURUSD": 1.08580,
-    "GBPJPY": 197.620,
-    "USDCAD": 1.38920,
+    "GBPUSD": 1.29800,
     "USDJPY": 152.380,
+    "USDCHF": 0.86500,
+    "USDCAD": 1.38920,
     "AUDUSD": 0.65750,
-    "EURGBP": 0.83620
+    "NZDUSD": 0.59700,
+    "EURGBP": 0.83620,
+    "EURJPY": 165.500,
+    "GBPJPY": 197.620,
+    "AUDJPY": 100.150,
+    "CADJPY": 109.600,
+    "CHFJPY": 176.050,
+    "EURAUD": 1.65000,
+    "EURCAD": 1.50850,
+    "EURCHF": 0.93950,
+    "EURNZD": 1.81700,
+    "GBPAUD": 1.97200,
+    "GBPCAD": 1.80300,
+    "GBPCHF": 1.12300,
+    "GBPNZD": 2.17100,
+    "AUDCAD": 0.91450,
+    "AUDCHF": 0.56900,
+    "AUDNZD": 1.10100,
+    "CADCHF": 0.62250,
+    "NZDCAD": 0.82950,
+    "NZDCHF": 0.51650,
+    "NZDJPY": 90.950,
+    "XAUUSD": 2744.00,
+    "XAGUSD": 33.75,
+    "USOIL": 69.15,
+    "UKBRENT": 73.00,
+    "BTCUSD": 71800.00,
+    "ETHUSD": 2635.00
 }
+
+def get_base_price_for_asset(asset: str) -> float:
+    if asset in INSTRUMENT_BASE_PRICES:
+        return INSTRUMENT_BASE_PRICES[asset]
+    upper = asset.upper()
+    if "BTC" in upper:
+        return 71850.0
+    if "ETH" in upper:
+        return 2640.0
+    if "XAU" in upper or "GOLD" in upper:
+        return 2745.0
+    if "IDR" in upper:
+        return 15720.0
+    if "COP" in upper:
+        return 4420.0
+    if "NGN" in upper:
+        return 1650.0
+    if "ARS" in upper:
+        return 995.0
+    if "JPY" in upper:
+        return 152.0
+    if "INR" in upper:
+        return 84.15
+    if "OIL" in upper or "CRUDE" in upper or "BRENT" in upper:
+        return 70.0
+    return 1.0850
+
+def round_price_for_asset(price: float, base_price: float) -> float:
+    if base_price >= 1000:
+        return round(price, 2)
+    elif base_price >= 100:
+        return round(price, 3)
+    else:
+        return round(price, 5)
 
 def generate_candles_for_instrument(
     asset: str,
@@ -40,7 +140,7 @@ def generate_candles_for_instrument(
     Generates a continuous sequence of realistic 1-minute candlestick data
     anchored to the instrument's realistic market scale.
     """
-    base_price = INSTRUMENT_BASE_PRICES.get(asset, 1.1000)
+    base_price = get_base_price_for_asset(asset)
     volatility = base_price * 0.00035  # realistic 1-minute price fluctuation
 
     if end_time is None:
@@ -55,15 +155,15 @@ def generate_candles_for_instrument(
         
         # Micro-trend cycle simulation
         drift = math.sin(i * 0.25) * (volatility * 0.4) + random.uniform(-volatility, volatility)
-        open_p = round(current_price, 5 if base_price < 100 else 3)
-        close_p = round(open_p + drift, 5 if base_price < 100 else 3)
+        open_p = round_price_for_asset(current_price, base_price)
+        close_p = round_price_for_asset(open_p + drift, base_price)
         
         # High and low wicks
         wick_high = abs(random.gauss(0, volatility * 0.6))
         wick_low = abs(random.gauss(0, volatility * 0.6))
         
-        high_p = round(max(open_p, close_p) + wick_high, 5 if base_price < 100 else 3)
-        low_p = round(min(open_p, close_p) - wick_low, 5 if base_price < 100 else 3)
+        high_p = round_price_for_asset(max(open_p, close_p) + wick_high, base_price)
+        low_p = round_price_for_asset(min(open_p, close_p) - wick_low, base_price)
         
         # Ensure open and close sit within high and low
         high_p = max(high_p, open_p, close_p)
@@ -272,7 +372,7 @@ def generate_simulated_one_minute_candle(
 
     for second in range(0, 61, 5):  # every 5 seconds (13 keyframes)
         random_shock = random.uniform(-volatility * 0.6, volatility * 0.6) + bias_step
-        curr = round(curr + random_shock, 5 if start_price < 100 else 3)
+        curr = round_price_for_asset(curr + random_shock, start_price)
         high_p = max(high_p, curr)
         low_p = min(low_p, curr)
         ticks.append({
@@ -284,10 +384,10 @@ def generate_simulated_one_minute_candle(
     outcome = "UP" if close_p > start_price else ("DOWN" if close_p < start_price else "NEUTRAL")
 
     return {
-        "start_price": start_price,
-        "high_price": high_p,
-        "low_price": low_p,
-        "close_price": close_p,
+        "start_price": round_price_for_asset(start_price, start_price),
+        "high_price": round_price_for_asset(high_p, start_price),
+        "low_price": round_price_for_asset(low_p, start_price),
+        "close_price": round_price_for_asset(close_p, start_price),
         "outcome": outcome,
         "ticks": ticks
     }
