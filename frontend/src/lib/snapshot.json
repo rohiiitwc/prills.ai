@@ -1,6 +1,6 @@
 {
   "stats": {
-    "today_signal_count": 327,
+    "today_signal_count": 328,
     "today_win_count": 260,
     "today_loss_count": 56,
     "today_draw_count": 0,
@@ -8,7 +8,7 @@
     "today_unknown_count": 1,
     "win_rate_percentage": 82.3,
     "otc_signals_today": 73,
-    "live_signals_today": 254,
+    "live_signals_today": 255,
     "otc_win_count": 52,
     "otc_loss_count": 19,
     "otc_unknown_count": 1,
@@ -19,7 +19,7 @@
     "live_win_rate_percentage": 84.9,
     "telegram_connected": true,
     "telegram_auth_status": "CONNECTED",
-    "last_sync_at": "2026-10-30T15:18:01.762350+00:00",
+    "last_sync_at": "2026-10-30T15:18:38.817757+00:00",
     "source_1_status": "CONNECTED",
     "source_2_status": "CONNECTED"
   },
@@ -588,6 +588,29 @@
   },
   "all_signals": {
     "items": [
+      {
+        "id": 1192,
+        "source_id": 1,
+        "source_name": "Global Forex Stream",
+        "market_category": "LIVE",
+        "asset": "GBPUSD",
+        "direction": "UNKNOWN",
+        "direction_display": "UNKNOWN",
+        "entry_time_announced": "N/A",
+        "entry_time_converted": null,
+        "expiry_duration": "N/A",
+        "signal_published_at": "2026-10-30T15:18:03",
+        "website_received_at": "2026-10-30T15:17:59.916609",
+        "is_late": false,
+        "late_by_seconds": 0,
+        "status": "NEEDS_REVIEW",
+        "reported_result": "LOSS",
+        "result_reported_at": "2026-10-30T15:18:03",
+        "raw_signal_text": "[Result Message without Prior Signal] \ud83d\uddd3 GBPUSD Loss \u2611\ufe0f",
+        "raw_result_text": "\ud83d\uddd3 GBPUSD Loss \u2611\ufe0f",
+        "review_reason": "Unmatched result: No active PENDING or UNKNOWN signal found for GBPUSD in QUOTEX OFFICIAL VIP BOT",
+        "is_test_data": false
+      },
       {
         "id": 1191,
         "source_id": 2,
@@ -1714,32 +1737,9 @@
         "raw_result_text": "\ud83d\uddd3 EURUSD Profit \u2705",
         "review_reason": null,
         "is_test_data": false
-      },
-      {
-        "id": 1147,
-        "source_id": 1,
-        "source_name": "Global Forex Stream",
-        "market_category": "LIVE",
-        "asset": "EURUSD",
-        "direction": "CALL",
-        "direction_display": "CALL UP",
-        "entry_time_announced": "09:27",
-        "entry_time_converted": "17:57 IST",
-        "expiry_duration": "1 Minutes",
-        "signal_published_at": "2026-10-30T12:26:07",
-        "website_received_at": "2026-10-30T15:05:17.646501",
-        "is_late": false,
-        "late_by_seconds": 0,
-        "status": "WIN",
-        "reported_result": "WIN",
-        "result_reported_at": "2026-10-30T12:28:03",
-        "raw_signal_text": "\ud83d\udcca EURUSD\n\u23f0 09:27\n\u231b\ufe0f 1 Minutes\n\ud83d\udfe2 CALL UP \u2b06\ufe0f\n\n\ud83d\udea7 ALL BROKER 1 M1 \ud83d\udea7",
-        "raw_result_text": "\ud83d\uddd3 EURUSD Profit \u2705",
-        "review_reason": null,
-        "is_test_data": false
       }
     ],
-    "total": 1167,
+    "total": 1168,
     "page": 1,
     "page_size": 50,
     "total_pages": 24
@@ -2905,6 +2905,29 @@
   "signals_live": {
     "items": [
       {
+        "id": 1192,
+        "source_id": 1,
+        "source_name": "Global Forex Stream",
+        "market_category": "LIVE",
+        "asset": "GBPUSD",
+        "direction": "UNKNOWN",
+        "direction_display": "UNKNOWN",
+        "entry_time_announced": "N/A",
+        "entry_time_converted": null,
+        "expiry_duration": "N/A",
+        "signal_published_at": "2026-10-30T15:18:03",
+        "website_received_at": "2026-10-30T15:17:59.916609",
+        "is_late": false,
+        "late_by_seconds": 0,
+        "status": "NEEDS_REVIEW",
+        "reported_result": "LOSS",
+        "result_reported_at": "2026-10-30T15:18:03",
+        "raw_signal_text": "[Result Message without Prior Signal] \ud83d\uddd3 GBPUSD Loss \u2611\ufe0f",
+        "raw_result_text": "\ud83d\uddd3 GBPUSD Loss \u2611\ufe0f",
+        "review_reason": "Unmatched result: No active PENDING or UNKNOWN signal found for GBPUSD in QUOTEX OFFICIAL VIP BOT",
+        "is_test_data": false
+      },
+      {
         "id": 1190,
         "source_id": 1,
         "source_name": "Global Forex Stream",
@@ -4030,32 +4053,9 @@
         "raw_result_text": "\ud83d\uddd3 GBPJPY Loss \u2611\ufe0f",
         "review_reason": null,
         "is_test_data": false
-      },
-      {
-        "id": 1134,
-        "source_id": 1,
-        "source_name": "Global Forex Stream",
-        "market_category": "LIVE",
-        "asset": "EURGBP",
-        "direction": "PUT",
-        "direction_display": "PUT DOWN",
-        "entry_time_announced": "08:31",
-        "entry_time_converted": "17:01 IST",
-        "expiry_duration": "1 Minutes",
-        "signal_published_at": "2026-10-30T11:30:09",
-        "website_received_at": "2026-10-30T15:05:14.656519",
-        "is_late": false,
-        "late_by_seconds": 0,
-        "status": "WIN",
-        "reported_result": "WIN",
-        "result_reported_at": "2026-10-30T11:32:03",
-        "raw_signal_text": "\ud83d\udcca EURGBP\n\u23f0 08:31\n\u231b\ufe0f 1 Minutes\n\ud83d\udd34 PUT DOWN \u2b07\ufe0f\n\n\ud83d\udea7 ALL BROKER 1 M1 \ud83d\udea7",
-        "raw_result_text": "\ud83d\uddd3 EURGBP Profit \u2705",
-        "review_reason": null,
-        "is_test_data": false
       }
     ],
-    "total": 712,
+    "total": 713,
     "page": 1,
     "page_size": 50,
     "total_pages": 15
@@ -4064,7 +4064,7 @@
     "is_connected": true,
     "status": "CONNECTED",
     "error_message": null,
-    "last_sync_at": "2026-10-30T15:18:01.762350+00:00",
+    "last_sync_at": "2026-10-30T15:18:38.817757+00:00",
     "sources": [
       {
         "name": "QUOTEX OFFICIAL VIP BOT",
