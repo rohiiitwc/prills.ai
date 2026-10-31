@@ -432,3 +432,20 @@ async def get_ai_lab_history(
         "total_pages": total_pages
     }
 
+class QuotexSyncRequest(BaseModel):
+    ssid: str
+
+@router.post("/quotex-sync")
+async def connect_quotex_sync(req: QuotexSyncRequest):
+    from backend.app.ai_lab.quotex_ws import start_quotex_sync, get_quotex_sync_status
+    if not req.ssid or len(req.ssid.strip()) < 10:
+        raise HTTPException(status_code=400, detail="A valid Quotex ssid session cookie is required.")
+    start_quotex_sync(req.ssid.strip())
+    return get_quotex_sync_status()
+
+@router.get("/quotex-sync")
+async def read_quotex_sync():
+    from backend.app.ai_lab.quotex_ws import get_quotex_sync_status
+    return get_quotex_sync_status()
+
+

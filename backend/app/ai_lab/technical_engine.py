@@ -194,7 +194,14 @@ def generate_otc_calibrated_candles(
     to eliminate artificial sine wave patterns and mirror Quotex trading terminal candles.
     """
     base_price = get_base_price_for_asset(asset)
-    volatility = base_price * 0.00030
+    try:
+        from backend.app.ai_lab.quotex_ws import get_live_tick_for_asset
+        live_quote = get_live_tick_for_asset(asset)
+        if live_quote:
+            base_price = live_quote
+    except Exception:
+        pass
+    volatility = base_price * 0.00012
 
     if end_time is None:
         end_time = get_ist_now()
@@ -205,14 +212,14 @@ def generate_otc_calibrated_candles(
 
     candles = []
     current_price = base_price
-    momentum = (rng.random() - 0.5) * volatility * 0.4
+    momentum = (rng.random() - 0.5) * volatility * 0.2
 
     for i in range(count, 0, -1):
         bar_time = end_time - timedelta(minutes=i)
 
-        # Autoregressive momentum walk with mean-reversion pull towards base_price
-        momentum = 0.65 * momentum + rng.gauss(0, volatility * 0.45)
-        mean_reversion = (base_price - current_price) * 0.05
+        # Autoregressive momentum walk with strong mean-reversion pull towards base_price
+        momentum = 0.40 * momentum + rng.gauss(0, volatility * 0.25)
+        mean_reversion = (base_price - current_price) * 0.75
         net_drift = momentum + mean_reversion
 
         open_p = round_price_for_asset(current_price, base_price)
