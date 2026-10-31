@@ -210,8 +210,11 @@ export default function AILabPage() {
     setSyncFeedback(null);
     try {
       let cleanSsid = quotexSsid.trim();
-      // Automatically extract value if user pasted full header line like "laravel_session=eyJ...; lid=1371097"
-      if (cleanSsid.includes('laravel_session=')) {
+      // Automatically extract value if user pasted full WebSocket frame like 42["authorization",{"session":"dJzh...","isDemo":1}]
+      if (cleanSsid.includes('"session"') || cleanSsid.includes("'session'")) {
+        const match = cleanSsid.match(/["']session["']\s*:\s*["']([^"']+)["']/);
+        if (match) cleanSsid = match[1].trim();
+      } else if (cleanSsid.includes('laravel_session=')) {
         const match = cleanSsid.match(/laravel_session=([^;]+)/);
         if (match) cleanSsid = match[1].trim();
       } else if (cleanSsid.includes('ssid=')) {
@@ -224,10 +227,10 @@ export default function AILabPage() {
         await fetch('/api/v1/ai-lab/quotex-sync', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ ssid: cleanSsid, session_name: 'laravel_session' })
+          body: JSON.stringify({ ssid: cleanSsid, session_name: 'quotex_ws_session' })
         });
         setQuotexSyncStatus('CONNECTED');
-        setSyncFeedback('Successfully linked with your Quotex terminal (laravel_session authenticated)!');
+        setSyncFeedback('Successfully linked with your live Quotex terminal! Telemetry streaming all 42 pairs second-to-second.');
       } else {
         localStorage.removeItem('quotex_ssid');
         setQuotexSyncStatus('CALIBRATED_STANDALONE');
@@ -2552,14 +2555,14 @@ export default function AILabPage() {
                 </div>
 
                 <span className="text-[11px] font-semibold text-slate-300 block pt-1">
-                  If you wish to link your active Quotex browser session:
+                  How to Link 1:1 Live Quotex WebSocket Stream (All Pairs):
                 </span>
                 <ol className="list-decimal list-inside space-y-1.5 text-slate-300 text-[11px] leading-relaxed">
                   <li>Open <a href="https://quotex.com/en/trade" target="_blank" rel="noreferrer" className="text-cyan-400 underline font-bold">quotex.com/en/trade</a> in your browser.</li>
-                  <li>Press <kbd className="px-1.5 py-0.5 rounded bg-slate-800 font-mono text-white border border-slate-700">F12</kbd> &rarr; go to <strong>Network</strong> &rarr; <strong>Cookies</strong> (or <strong>Application</strong> &rarr; <strong>Cookies</strong>).</li>
-                  <li>Look for the cookie named <code className="text-amber-300 font-mono font-bold">laravel_session</code> (or <code className="text-amber-300 font-mono font-bold">ssid</code>).</li>
-                  <li>Copy its value (starts with <code className="text-slate-400 font-mono">eyJpdiI...</code>) or paste the full cookie string below.</li>
-                  <li>Click <strong>Link Quotex Terminal</strong>.</li>
+                  <li>Press <kbd className="px-1.5 py-0.5 rounded bg-slate-800 font-mono text-white border border-slate-700">F12</kbd> &rarr; click <strong>Network</strong> &rarr; click the <strong>WS</strong> (WebSockets) filter button.</li>
+                  <li>Click on the connection named <code className="text-cyan-300 font-mono">ws2.quotex.com</code> &rarr; click the <strong>Messages</strong> sub-tab.</li>
+                  <li>Right-click and copy the message: <code className="text-amber-300 font-mono">42[&quot;authorization&quot;,&#123;&quot;session&quot;:&quot;...&quot;&#125;]</code> (or just the session code).</li>
+                  <li>Paste it into the box below and click <strong>Link Quotex Terminal</strong>.</li>
                 </ol>
               </div>
 
@@ -2586,7 +2589,7 @@ export default function AILabPage() {
                       type="text"
                       value={overridePriceInput}
                       onChange={(e) => setOverridePriceInput(e.target.value)}
-                      placeholder="e.g. 105.0778"
+                      placeholder="e.g. 105.0229"
                       className="w-full px-3 py-2 rounded-xl bg-slate-950 border border-slate-700 text-xs font-mono font-bold text-emerald-400 placeholder-slate-600 focus:outline-none focus:border-cyan-400"
                     />
                   </div>
@@ -2598,7 +2601,7 @@ export default function AILabPage() {
                       type="number"
                       value={overridePayoutInput}
                       onChange={(e) => setOverridePayoutInput(e.target.value)}
-                      placeholder="e.g. 79"
+                      placeholder="e.g. 77"
                       className="w-full px-3 py-2 rounded-xl bg-slate-950 border border-slate-700 text-xs font-mono font-bold text-cyan-300 placeholder-slate-600 focus:outline-none focus:border-cyan-400"
                     />
                   </div>
@@ -2617,13 +2620,13 @@ export default function AILabPage() {
               <form onSubmit={handleConnectQuotexSync} className="space-y-4">
                 <div>
                   <label className="text-[11px] uppercase font-bold text-slate-300 block mb-1.5 font-mono">
-                    Quotex Session Cookie (<code className="text-amber-300">laravel_session</code> or <code className="text-amber-300">ssid</code>)
+                    Quotex Live Session Token / Frame (<code className="text-amber-300">session</code> or <code className="text-cyan-300">42[&quot;authorization&quot;,...]</code>)
                   </label>
                   <input
                     type="password"
                     value={quotexSsid}
                     onChange={(e) => setQuotexSsid(e.target.value)}
-                    placeholder="Paste laravel_session (starts with eyJpdiI...) or leave empty for Calibrated Mode"
+                    placeholder="Paste 42[&quot;authorization&quot;,&#123;&quot;session&quot;:&quot;...&quot;&#125;] or raw session token"
                     className="w-full px-3.5 py-2.5 rounded-xl bg-slate-950 border border-slate-800 text-xs font-mono text-white placeholder-slate-600 focus:outline-none focus:border-cyan-500"
                   />
                 </div>

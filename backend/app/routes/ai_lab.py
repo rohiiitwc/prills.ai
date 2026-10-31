@@ -440,7 +440,11 @@ async def connect_quotex_sync(req: QuotexSyncRequest):
     import re
     from backend.app.ai_lab.quotex_ws import start_quotex_sync, get_quotex_sync_status
     ssid = (req.ssid or "").strip()
-    if "laravel_session=" in ssid:
+    if '"session"' in ssid or "'session'" in ssid:
+        m = re.search(r'["\']session["\']\s*:\s*["\']([^"\']+)["\']', ssid)
+        if m:
+            ssid = m.group(1).strip()
+    elif "laravel_session=" in ssid:
         m = re.search(r"laravel_session=([^;]+)", ssid)
         if m:
             ssid = m.group(1).strip()
@@ -449,7 +453,7 @@ async def connect_quotex_sync(req: QuotexSyncRequest):
         if m:
             ssid = m.group(1).strip()
     if not ssid or len(ssid) < 8:
-        raise HTTPException(status_code=400, detail="A valid Quotex session cookie (laravel_session or ssid) is required.")
+        raise HTTPException(status_code=400, detail="A valid Quotex session token or authorization frame is required.")
     start_quotex_sync(ssid)
     return get_quotex_sync_status()
 

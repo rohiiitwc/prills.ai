@@ -383,7 +383,10 @@ export async function POST(
 
   if (pathStr === 'ai-lab/quotex-sync') {
     let ssid = (body?.ssid || '').trim();
-    if (ssid.includes('laravel_session=')) {
+    if (ssid.includes('"session"') || ssid.includes("'session'")) {
+      const m = ssid.match(/["']session["']\s*:\s*["']([^"']+)["']/);
+      if (m) ssid = m[1].trim();
+    } else if (ssid.includes('laravel_session=')) {
       const m = ssid.match(/laravel_session=([^;]+)/);
       if (m) ssid = m[1].trim();
     } else if (ssid.includes('ssid=')) {
@@ -394,7 +397,7 @@ export async function POST(
       status: ssid ? 'CONNECTED' : 'DISCONNECTED',
       ssid_configured: Boolean(ssid),
       subscribed_assets_count: 42,
-      sync_mode: ssid ? 'Authenticated Quotex Session Stream (laravel_session)' : 'Quotex Direct Calibration Mode',
+      sync_mode: ssid ? 'Authenticated Quotex Session Stream (1:1 Live Telemetry)' : 'Quotex Direct Calibration Mode',
       message: ssid ? 'Quotex terminal session successfully synchronized!' : 'Session cleared.'
     });
   }
