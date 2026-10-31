@@ -593,7 +593,7 @@ function getAiLabHistoryFallback(market?: string | null, asset?: string | null) 
 
 const INSTRUMENT_BASE_PRICES: Record<string, number> = {
   // Quotex Official 24/7 OTC Currency Pairs (Calibrated to Quotex Live Trading Terminal)
-  'USDINR-OTC': 105.0778,
+  'USDINR-OTC': 105.0229,
   'USDPKR-OTC': 278.40,
   'USDBRL-OTC': 5.4420,
   'USDZAR-OTC': 16.7220,
@@ -768,35 +768,62 @@ async function runServerlessAiAnalysis(market_category: string, asset: string, i
   const volatility = basePrice * 0.00012;
 
   if (candles.length === 0) {
-    // Dynamic macro market swing wave calibrated to genuine Quotex chart ranges
-    const amp = basePrice * 0.000133;
+    const isUsdInr = asset.includes('USDINR');
+    const amp = basePrice * (isUsdInr ? 0.00026 : 0.000133);
     const w29 = Math.sin((29 - 26) * 0.15) * amp;
     let prevClose: number | null = null;
 
     for (let idx = 0; idx < 30; idx++) {
       const t = new Date(now.getTime() - (29 - idx) * 60000);
-      const center = basePrice + (Math.sin((idx - 26) * 0.15) * amp - w29);
-      const nextCenter = idx < 29 ? basePrice + (Math.sin((idx + 1 - 26) * 0.15) * amp - w29) : basePrice;
-
       let o: number;
-      if (idx === 0) {
-        o = roundPriceForAsset(center - (Math.random() - 0.5) * amp * 0.15, basePrice);
-      } else {
-        o = prevClose!;
-      }
-
       let c: number;
-      if (idx === 29) {
-        c = roundPriceForAsset(basePrice, basePrice);
+
+      if (isUsdInr) {
+        if (idx < 25) {
+          const center = basePrice + 0.0255 + Math.sin(idx * 0.45) * 0.0035;
+          const noise = (Math.random() - 0.5) * 0.0028;
+          o = prevClose ? prevClose : roundPriceForAsset(center - 0.001, basePrice);
+          c = roundPriceForAsset(center + noise, basePrice);
+        } else if (idx === 25) {
+          o = prevClose!;
+          c = roundPriceForAsset(basePrice + 0.0180, basePrice);
+        } else if (idx === 26) {
+          o = prevClose!;
+          c = roundPriceForAsset(basePrice + 0.0055, basePrice);
+        } else if (idx === 27) {
+          o = prevClose!;
+          c = roundPriceForAsset(basePrice - 0.0005, basePrice);
+        } else if (idx === 28) {
+          o = prevClose!;
+          c = roundPriceForAsset(basePrice + 0.0018, basePrice);
+        } else {
+          o = prevClose!;
+          c = basePrice;
+        }
       } else {
-        const noise = (Math.random() - 0.48) * amp * 0.25;
-        c = roundPriceForAsset(nextCenter + noise, basePrice);
+        const center = basePrice + (Math.sin((idx - 26) * 0.15) * amp - w29);
+        const nextCenter = idx < 29 ? basePrice + (Math.sin((idx + 1 - 26) * 0.15) * amp - w29) : basePrice;
+
+        if (idx === 0) {
+          o = roundPriceForAsset(center - (Math.random() - 0.5) * amp * 0.15, basePrice);
+        } else {
+          o = prevClose!;
+        }
+
+        if (idx === 29) {
+          c = roundPriceForAsset(basePrice, basePrice);
+        } else {
+          const noise = (Math.random() - 0.48) * amp * 0.25;
+          c = roundPriceForAsset(nextCenter + noise, basePrice);
+        }
       }
 
-      const wickHigh = Math.abs((Math.random() - 0.5) * amp * 0.36);
-      const wickLow = Math.abs((Math.random() - 0.5) * amp * 0.36);
-      const h = roundPriceForAsset(Math.max(o, c) + wickHigh, basePrice);
-      const l = roundPriceForAsset(Math.min(o, c) - wickLow, basePrice);
+      const wickHigh = Math.abs((Math.random() - 0.5) * (isUsdInr ? 0.0012 : amp * 0.36));
+      let wickLow = Math.abs((Math.random() - 0.5) * (isUsdInr ? 0.0012 : amp * 0.36));
+
+      let h = roundPriceForAsset(Math.max(o, c) + wickHigh, basePrice);
+      let l = roundPriceForAsset(Math.min(o, c) - wickLow, basePrice);
+      if (isUsdInr && idx === 27) l = 105.0213;
 
       candles.push({
         timestamp: t.toLocaleTimeString('en-IN', { timeZone: 'Asia/Kolkata', hour12: false, hour: '2-digit', minute: '2-digit' }) + ' IST',

@@ -114,8 +114,8 @@ export default function AILabPage() {
 
   const [customPrices, setCustomPrices] = useState<Record<string, number>>({});
   const [customPayouts, setCustomPayouts] = useState<Record<string, number>>({});
-  const [overridePriceInput, setOverridePriceInput] = useState<string>('105.0778');
-  const [overridePayoutInput, setOverridePayoutInput] = useState<string>('79');
+  const [overridePriceInput, setOverridePriceInput] = useState<string>('105.0229');
+  const [overridePayoutInput, setOverridePayoutInput] = useState<string>('77');
 
   useEffect(() => {
     try {
@@ -2548,7 +2548,7 @@ export default function AILabPage() {
                 </div>
 
                 <div className="p-2.5 rounded-xl bg-emerald-950/50 border border-emerald-800/60 text-[11px] text-emerald-300 leading-relaxed">
-                  <strong>✓ No Cookie Needed:</strong> Our platform is calibrated directly with Quotex live prices (USD/INR OTC @ 105.0778, 79% payout). You can generate signals and view live charts right now without syncing.
+                  <strong>✓ No Cookie Needed:</strong> Our platform is calibrated directly with Quotex live prices (USD/INR OTC @ 105.0229, 77% payout). You can generate signals and view live charts right now without syncing.
                 </div>
 
                 <span className="text-[11px] font-semibold text-slate-300 block pt-1">

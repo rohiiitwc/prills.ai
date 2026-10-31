@@ -14,15 +14,15 @@ export interface QuotexAssetConfig {
 export const QUOTEX_ASSETS_MAP: Record<string, QuotexAssetConfig> = {
   // =========================================================================
   // 1. QUOTEX 24/7 OTC CURRENCY PAIRS (Have OTC on Quotex)
-  // Calibrated to exact Quotex OTC terminal quotes (e.g. USD/INR OTC @ 105.0778)
+  // Calibrated to exact Quotex OTC terminal quotes (e.g. USD/INR OTC @ 105.0229)
   // =========================================================================
   'USDINR-OTC': {
     symbol: 'USDINR-OTC',
     name: 'USD/INR (Quotex OTC)',
     category: 'OTC',
-    payout: 79,
+    payout: 77,
     change24h: '+0.03%',
-    basePrice: 105.0778,
+    basePrice: 105.0229,
     digits: 4
   },
   'USDPKR-OTC': {
