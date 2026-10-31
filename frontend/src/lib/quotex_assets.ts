@@ -22,14 +22,14 @@ export const QUOTEX_ASSETS_MAP: Record<string, QuotexAssetConfig> = {
     category: 'OTC',
     payout: 77,
     change24h: '+0.03%',
-    basePrice: 105.0229,
+    basePrice: 105.0188,
     digits: 4
   },
   'USDPKR-OTC': {
     symbol: 'USDPKR-OTC',
     name: 'USD/PKR (Quotex OTC)',
     category: 'OTC',
-    payout: 92,
+    payout: 77,
     change24h: '+0.03%',
     basePrice: 278.4000,
     digits: 4

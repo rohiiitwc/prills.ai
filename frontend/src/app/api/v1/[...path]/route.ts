@@ -596,7 +596,7 @@ function getAiLabHistoryFallback(market?: string | null, asset?: string | null) 
 
 const INSTRUMENT_BASE_PRICES: Record<string, number> = {
   // Quotex Official 24/7 OTC Currency Pairs (Calibrated to Quotex Live Trading Terminal)
-  'USDINR-OTC': 105.0229,
+  'USDINR-OTC': 105.0188,
   'USDPKR-OTC': 278.40,
   'USDBRL-OTC': 5.4420,
   'USDZAR-OTC': 16.7220,

@@ -21,6 +21,11 @@ async def lifespan(app: FastAPI):
     # Startup: initialize database tables and telegram service
     await init_db()
     await telegram_service.initialize()
+    try:
+        from backend.app.ai_lab.quotex_ws import ensure_quotex_ws_running
+        ensure_quotex_ws_running()
+    except Exception:
+        pass
     yield
     # Shutdown
     if telegram_service.client and telegram_service.client.is_connected():

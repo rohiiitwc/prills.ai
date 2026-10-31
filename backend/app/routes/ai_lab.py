@@ -242,7 +242,12 @@ async def analyze_market(
     settle_time_str = target_settle_dt.strftime("%H:%M:05 IST")
     seconds_to_entry = max(1, int((target_entry_dt - now_ist).total_seconds()))
 
-    payout_pct = float(get_quotex_payout(asset))
+    try:
+        from backend.app.ai_lab.quotex_ws import get_live_payout_for_asset
+        live_po = get_live_payout_for_asset(asset)
+        payout_pct = float(live_po) if live_po is not None else float(get_quotex_payout(asset))
+    except Exception:
+        payout_pct = float(get_quotex_payout(asset))
     start_p = simulated_candle["start_price"]
     close_p = simulated_candle["close_price"]
     delta_val = round(close_p - start_p, 5)
