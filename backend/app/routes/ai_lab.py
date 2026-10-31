@@ -437,10 +437,20 @@ class QuotexSyncRequest(BaseModel):
 
 @router.post("/quotex-sync")
 async def connect_quotex_sync(req: QuotexSyncRequest):
+    import re
     from backend.app.ai_lab.quotex_ws import start_quotex_sync, get_quotex_sync_status
-    if not req.ssid or len(req.ssid.strip()) < 10:
-        raise HTTPException(status_code=400, detail="A valid Quotex ssid session cookie is required.")
-    start_quotex_sync(req.ssid.strip())
+    ssid = (req.ssid or "").strip()
+    if "laravel_session=" in ssid:
+        m = re.search(r"laravel_session=([^;]+)", ssid)
+        if m:
+            ssid = m.group(1).strip()
+    elif "ssid=" in ssid:
+        m = re.search(r"ssid=([^;]+)", ssid)
+        if m:
+            ssid = m.group(1).strip()
+    if not ssid or len(ssid) < 8:
+        raise HTTPException(status_code=400, detail="A valid Quotex session cookie (laravel_session or ssid) is required.")
+    start_quotex_sync(ssid)
     return get_quotex_sync_status()
 
 @router.get("/quotex-sync")

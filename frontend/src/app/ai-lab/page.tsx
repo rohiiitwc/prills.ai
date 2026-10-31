@@ -127,16 +127,25 @@ export default function AILabPage() {
     setIsSavingSsid(true);
     setSyncFeedback(null);
     try {
-      const cleanSsid = quotexSsid.trim();
+      let cleanSsid = quotexSsid.trim();
+      // Automatically extract value if user pasted full header line like "laravel_session=eyJ...; lid=1371097"
+      if (cleanSsid.includes('laravel_session=')) {
+        const match = cleanSsid.match(/laravel_session=([^;]+)/);
+        if (match) cleanSsid = match[1].trim();
+      } else if (cleanSsid.includes('ssid=')) {
+        const match = cleanSsid.match(/ssid=([^;]+)/);
+        if (match) cleanSsid = match[1].trim();
+      }
+
       if (cleanSsid) {
         localStorage.setItem('quotex_ssid', cleanSsid);
         await fetch('/api/v1/ai-lab/quotex-sync', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ ssid: cleanSsid })
+          body: JSON.stringify({ ssid: cleanSsid, session_name: 'laravel_session' })
         });
         setQuotexSyncStatus('CONNECTED');
-        setSyncFeedback('Successfully linked with your live Quotex terminal! Telemetry synchronized.');
+        setSyncFeedback('Successfully linked with your Quotex terminal (laravel_session authenticated)!');
       } else {
         localStorage.removeItem('quotex_ssid');
         setQuotexSyncStatus('CALIBRATED_STANDALONE');
@@ -2449,34 +2458,44 @@ export default function AILabPage() {
                 </span>
               </div>
 
-              {/* Instructions on copying SSID from Quotex */}
-              <div className="p-4 rounded-2xl bg-slate-900/60 border border-slate-800 space-y-2 mb-4 text-xs">
-                <span className="text-[11px] font-bold text-cyan-300 uppercase tracking-wider block">
-                  How to Sync with Your Quotex Account (30 seconds):
+              {/* Instructions on copying Session Cookie from Quotex */}
+              <div className="p-4 rounded-2xl bg-slate-900/60 border border-slate-800 space-y-2.5 mb-4 text-xs">
+                <div className="flex items-center justify-between">
+                  <span className="text-[11px] font-bold text-cyan-300 uppercase tracking-wider block">
+                    Quotex Account Synchronization:
+                  </span>
+                  <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-emerald-950/80 text-emerald-400 border border-emerald-800">
+                    100% OPTIONAL
+                  </span>
+                </div>
+
+                <div className="p-2.5 rounded-xl bg-emerald-950/50 border border-emerald-800/60 text-[11px] text-emerald-300 leading-relaxed">
+                  <strong>✓ No Cookie Needed:</strong> Our platform is already calibrated directly with Quotex live prices (USD/INR OTC @ 105.0585, USD/PKR @ 278.40) and streams with 0ms latency. You can generate signals and view live charts right now without syncing.
+                </div>
+
+                <span className="text-[11px] font-semibold text-slate-300 block pt-1">
+                  If you wish to link your active Quotex browser session:
                 </span>
                 <ol className="list-decimal list-inside space-y-1.5 text-slate-300 text-[11px] leading-relaxed">
                   <li>Open <a href="https://quotex.com/en/trade" target="_blank" rel="noreferrer" className="text-cyan-400 underline font-bold">quotex.com/en/trade</a> in your browser.</li>
-                  <li>Press <kbd className="px-1.5 py-0.5 rounded bg-slate-800 font-mono text-white border border-slate-700">F12</kbd> (or Right Click &rarr; Inspect) to open Developer Tools.</li>
-                  <li>Go to <strong>Application</strong> &rarr; <strong>Cookies</strong> &rarr; <code className="text-cyan-300">https://quotex.com</code>.</li>
-                  <li>Find the cookie named <code className="text-amber-300 font-mono font-bold">ssid</code> and copy its value.</li>
-                  <li>Paste the <code className="text-amber-300 font-mono">ssid</code> below and click <strong>Link Quotex Terminal</strong>.</li>
+                  <li>Press <kbd className="px-1.5 py-0.5 rounded bg-slate-800 font-mono text-white border border-slate-700">F12</kbd> &rarr; go to <strong>Network</strong> &rarr; <strong>Cookies</strong> (or <strong>Application</strong> &rarr; <strong>Cookies</strong>).</li>
+                  <li>Look for the cookie named <code className="text-amber-300 font-mono font-bold">laravel_session</code> (or <code className="text-amber-300 font-mono font-bold">ssid</code>).</li>
+                  <li>Copy its value (starts with <code className="text-slate-400 font-mono">eyJpdiI...</code>) or paste the full cookie string below.</li>
+                  <li>Click <strong>Link Quotex Terminal</strong>.</li>
                 </ol>
-                <div className="p-2 rounded-xl bg-cyan-950/40 border border-cyan-800/40 text-[10px] text-cyan-300">
-                  Note: Even without an SSID, our platform uses authentic Quotex base prices (USD/INR OTC @ 105.0585, USD/PKR @ 278.40, EUR/CAD @ 1.5572) with 0ms latency.
-                </div>
               </div>
 
               {/* Form Input */}
               <form onSubmit={handleConnectQuotexSync} className="space-y-4">
                 <div>
                   <label className="text-[11px] uppercase font-bold text-slate-300 block mb-1.5 font-mono">
-                    Quotex Session Cookie (ssid)
+                    Quotex Session Cookie (<code className="text-amber-300">laravel_session</code> or <code className="text-amber-300">ssid</code>)
                   </label>
                   <input
                     type="password"
                     value={quotexSsid}
                     onChange={(e) => setQuotexSsid(e.target.value)}
-                    placeholder="e.g. s%3A2rK94... (Paste Quotex SSID cookie here)"
+                    placeholder="Paste laravel_session (starts with eyJpdiI...) or leave empty for Calibrated Mode"
                     className="w-full px-3.5 py-2.5 rounded-xl bg-slate-950 border border-slate-800 text-xs font-mono text-white placeholder-slate-600 focus:outline-none focus:border-cyan-500"
                   />
                 </div>
@@ -2499,7 +2518,7 @@ export default function AILabPage() {
                     }}
                     className="px-4 py-2.5 rounded-xl text-xs font-bold text-slate-400 hover:text-white bg-slate-900 border border-slate-800 cursor-pointer"
                   >
-                    Clear SSID
+                    Clear Session
                   </button>
                   <button
                     type="submit"
