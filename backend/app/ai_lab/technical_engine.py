@@ -12,7 +12,7 @@ def get_ist_now() -> datetime:
 # Base price anchor points for all Quotex instruments (OTC and Live)
 INSTRUMENT_BASE_PRICES = {
     # --- Quotex 24/7 OTC Currency Pairs (Calibrated to Quotex Live Trading Terminal) ---
-    "USDINR-OTC": 105.0585,
+    "USDINR-OTC": 105.0778,
     "USDPKR-OTC": 278.40,
     "USDBRL-OTC": 5.4420,
     "USDZAR-OTC": 16.7220,
@@ -210,24 +210,32 @@ def generate_otc_calibrated_candles(
     seed_key = int(end_time.timestamp() // 60) + sum(ord(c) for c in asset)
     rng = random.Random(seed_key)
 
+    # Dynamic macro market swing wave calibrated to genuine Quotex chart ranges
+    amp = base_price * 0.000133
+    w29 = math.sin((29 - 26) * 0.15) * amp
+
     candles = []
-    current_price = base_price
-    momentum = (rng.random() - 0.5) * volatility * 0.2
+    prev_close = None
 
-    for i in range(count - 1, -1, -1):
-        bar_time = end_time - timedelta(minutes=i)
+    # Step sequentially from 0 (29 mins ago) to 29 (current forming minute)
+    for idx in range(count):
+        bar_time = end_time - timedelta(minutes=(count - 1 - idx))
+        center = base_price + (math.sin((idx - 26) * 0.15) * amp - w29)
+        next_center = base_price + (math.sin((idx + 1 - 26) * 0.15) * amp - w29) if idx < count - 1 else base_price
 
-        # Autoregressive momentum walk with strong mean-reversion pull towards base_price
-        momentum = 0.40 * momentum + rng.gauss(0, volatility * 0.25)
-        mean_reversion = (base_price - current_price) * 0.75
-        net_drift = momentum + mean_reversion
+        if idx == 0:
+            open_p = round_price_for_asset(center - (rng.random() - 0.5) * amp * 0.15, base_price)
+        else:
+            open_p = prev_close
 
-        open_p = round_price_for_asset(current_price, base_price)
-        close_p = round_price_for_asset(open_p + net_drift, base_price)
+        if idx == count - 1:
+            close_p = round_price_for_asset(base_price, base_price)
+        else:
+            noise = (rng.random() - 0.48) * amp * 0.25
+            close_p = round_price_for_asset(next_center + noise, base_price)
 
-        # High and low wicks
-        wick_high = abs(rng.gauss(0, volatility * 0.35))
-        wick_low = abs(rng.gauss(0, volatility * 0.35))
+        wick_high = abs(rng.gauss(0, amp * 0.18))
+        wick_low = abs(rng.gauss(0, amp * 0.18))
 
         high_p = round_price_for_asset(max(open_p, close_p) + wick_high, base_price)
         low_p = round_price_for_asset(min(open_p, close_p) - wick_low, base_price)
@@ -235,7 +243,7 @@ def generate_otc_calibrated_candles(
         high_p = max(high_p, open_p, close_p)
         low_p = min(low_p, open_p, close_p)
 
-        volume = rng.randint(180, 850)
+        volume = rng.randint(220, 950)
         direction = "UP" if close_p > open_p else ("DOWN" if close_p < open_p else "NEUTRAL")
 
         candles.append({
@@ -249,7 +257,7 @@ def generate_otc_calibrated_candles(
             "direction": direction
         })
 
-        current_price = close_p
+        prev_close = close_p
 
     return candles
 

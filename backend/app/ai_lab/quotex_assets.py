@@ -6,15 +6,15 @@ from typing import Dict, Any, List
 QUOTEX_ASSETS_MAP: Dict[str, Dict[str, Any]] = {
     # =========================================================================
     # 1. QUOTEX 24/7 OTC CURRENCY PAIRS (Have OTC on Quotex)
-    # Calibrated to exact Quotex OTC terminal quotes (e.g. USD/INR OTC @ 105.0585)
+    # Calibrated to exact Quotex OTC terminal quotes (e.g. USD/INR OTC @ 105.0778)
     # =========================================================================
     "USDINR-OTC": {
         "symbol": "USDINR-OTC",
         "name": "USD/INR (Quotex OTC)",
         "category": "OTC",
-        "payout": 83,
+        "payout": 79,
         "change24h": "+0.03%",
-        "base_price": 105.0585,
+        "base_price": 105.0778,
         "digits": 4
     },
     "USDPKR-OTC": {

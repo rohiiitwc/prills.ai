@@ -593,7 +593,7 @@ function getAiLabHistoryFallback(market?: string | null, asset?: string | null) 
 
 const INSTRUMENT_BASE_PRICES: Record<string, number> = {
   // Quotex Official 24/7 OTC Currency Pairs (Calibrated to Quotex Live Trading Terminal)
-  'USDINR-OTC': 105.0585,
+  'USDINR-OTC': 105.0778,
   'USDPKR-OTC': 278.40,
   'USDBRL-OTC': 5.4420,
   'USDZAR-OTC': 16.7220,
@@ -768,21 +768,36 @@ async function runServerlessAiAnalysis(market_category: string, asset: string, i
   const volatility = basePrice * 0.00012;
 
   if (candles.length === 0) {
-    // Build 30 stochastic candles calibrated to Quotex price scales (No sine waves)
-    let curr = basePrice;
-    let momentum = (Math.random() - 0.5) * volatility * 0.2;
+    // Dynamic macro market swing wave calibrated to genuine Quotex chart ranges
+    const amp = basePrice * 0.000133;
+    const w29 = Math.sin((29 - 26) * 0.15) * amp;
+    let prevClose: number | null = null;
 
-    for (let i = 29; i >= 0; i--) {
-      const t = new Date(now.getTime() - i * 60000);
-      momentum = 0.40 * momentum + (Math.random() - 0.5) * volatility * 0.25;
-      const meanReversion = (basePrice - curr) * 0.75;
-      const drift = momentum + meanReversion;
-      const o = roundPriceForAsset(curr, basePrice);
-      const c = roundPriceForAsset(o + drift, basePrice);
-      const wickHigh = Math.abs((Math.random() - 0.5) * volatility * 0.7);
-      const wickLow = Math.abs((Math.random() - 0.5) * volatility * 0.7);
+    for (let idx = 0; idx < 30; idx++) {
+      const t = new Date(now.getTime() - (29 - idx) * 60000);
+      const center = basePrice + (Math.sin((idx - 26) * 0.15) * amp - w29);
+      const nextCenter = idx < 29 ? basePrice + (Math.sin((idx + 1 - 26) * 0.15) * amp - w29) : basePrice;
+
+      let o: number;
+      if (idx === 0) {
+        o = roundPriceForAsset(center - (Math.random() - 0.5) * amp * 0.15, basePrice);
+      } else {
+        o = prevClose!;
+      }
+
+      let c: number;
+      if (idx === 29) {
+        c = roundPriceForAsset(basePrice, basePrice);
+      } else {
+        const noise = (Math.random() - 0.48) * amp * 0.25;
+        c = roundPriceForAsset(nextCenter + noise, basePrice);
+      }
+
+      const wickHigh = Math.abs((Math.random() - 0.5) * amp * 0.36);
+      const wickLow = Math.abs((Math.random() - 0.5) * amp * 0.36);
       const h = roundPriceForAsset(Math.max(o, c) + wickHigh, basePrice);
       const l = roundPriceForAsset(Math.min(o, c) - wickLow, basePrice);
+
       candles.push({
         timestamp: t.toLocaleTimeString('en-IN', { timeZone: 'Asia/Kolkata', hour12: false, hour: '2-digit', minute: '2-digit' }) + ' IST',
         iso_time: t.toISOString(),
@@ -790,10 +805,10 @@ async function runServerlessAiAnalysis(market_category: string, asset: string, i
         high: Math.max(h, o, c),
         low: Math.min(l, o, c),
         close: c,
-        volume: Math.floor(Math.random() * 600 + 150),
+        volume: Math.floor(Math.random() * 600 + 200),
         direction: c >= o ? 'UP' : 'DOWN'
       });
-      curr = c;
+      prevClose = c;
     }
   }
 
