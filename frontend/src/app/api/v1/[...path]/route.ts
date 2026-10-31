@@ -586,7 +586,7 @@ function getAiLabHistoryFallback(market?: string | null, asset?: string | null) 
 
 const INSTRUMENT_BASE_PRICES: Record<string, number> = {
   // Quotex Official 24/7 OTC Currency Pairs (Calibrated to Quotex Live Trading Terminal)
-  'USDINR-OTC': 105.100,
+  'USDINR-OTC': 105.0585,
   'USDPKR-OTC': 278.40,
   'USDBRL-OTC': 5.4420,
   'USDZAR-OTC': 16.7220,
@@ -765,7 +765,7 @@ async function runServerlessAiAnalysis(market_category: string, asset: string, i
     let curr = basePrice;
     let momentum = (Math.random() - 0.5) * volatility * 0.2;
 
-    for (let i = 30; i > 0; i--) {
+    for (let i = 29; i >= 0; i--) {
       const t = new Date(now.getTime() - i * 60000);
       momentum = 0.40 * momentum + (Math.random() - 0.5) * volatility * 0.25;
       const meanReversion = (basePrice - curr) * 0.75;

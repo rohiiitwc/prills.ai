@@ -30,7 +30,8 @@ import {
   ExternalLink,
   ShieldCheck,
   Check,
-  X
+  X,
+  Calendar
 } from 'lucide-react';
 import { Navbar } from '../../components/Navbar';
 import { AuthGate } from '../../components/AuthGate';
@@ -186,16 +187,18 @@ export default function AILabPage() {
         lastBar.direction = newClose >= lastBar.open ? 'UP' : 'DOWN';
         lastBar.volume = (lastBar.volume || 250) + Math.floor(Math.random() * 4 + 1);
 
-        // At :00 mark of each minute, roll over to the next forming candle
-        if (nextDate.getSeconds() === 0) {
-          const timeStr = nextDate.toLocaleTimeString('en-IN', {
-            timeZone: 'Asia/Kolkata',
-            hour12: false,
-            hour: '2-digit',
-            minute: '2-digit'
-          }) + ' IST';
+        // Format current minute string in IST: e.g. "10:56 IST"
+        const currentMinuteStr = nextDate.toLocaleTimeString('en-IN', {
+          timeZone: 'Asia/Kolkata',
+          hour12: false,
+          hour: '2-digit',
+          minute: '2-digit'
+        }) + ' IST';
+
+        // At minute rollover, push the new forming candle for the current active minute
+        if (lastBar.timestamp !== currentMinuteStr) {
           candles.push({
-            timestamp: timeStr,
+            timestamp: currentMinuteStr,
             iso_time: nextDate.toISOString(),
             open: newClose,
             high: newClose,
@@ -579,6 +582,21 @@ export default function AILabPage() {
     return item.asset === historyFilterAsset;
   });
 
+  const formattedTodayDate = now.toLocaleDateString('en-IN', {
+    timeZone: 'Asia/Kolkata',
+    weekday: 'long',
+    day: 'numeric',
+    month: 'long',
+    year: 'numeric'
+  }); // e.g. "Saturday, 31 October 2026"
+
+  const formattedShortDate = now.toLocaleDateString('en-IN', {
+    timeZone: 'Asia/Kolkata',
+    day: '2-digit',
+    month: 'short',
+    year: 'numeric'
+  }); // e.g. "31 Oct 2026"
+
   const formattedIstTime = now.toLocaleTimeString('en-IN', {
     timeZone: 'Asia/Kolkata',
     hour12: false,
@@ -607,8 +625,13 @@ export default function AILabPage() {
                     <Timer className="w-3 h-3 text-cyan-400" />
                     30-SECOND PRE-ENTRY TELEMETRY
                   </span>
-                  <span className="px-2.5 py-0.5 rounded-full text-[10px] font-mono font-bold bg-slate-900 border border-slate-800 text-slate-300">
-                    LIVE IST CLOCK: {formattedIstTime}
+                  <span className="px-2.5 py-0.5 rounded-full text-[10px] font-mono font-bold bg-emerald-950/80 border border-emerald-700/70 text-emerald-300 flex items-center gap-1.5 shadow-sm">
+                    <Calendar className="w-3 h-3 text-emerald-400" />
+                    TODAY: {formattedTodayDate}
+                  </span>
+                  <span className="px-2.5 py-0.5 rounded-full text-[10px] font-mono font-bold bg-slate-900 border border-slate-800 text-cyan-300 flex items-center gap-1.5">
+                    <Clock className="w-3 h-3 text-cyan-400" />
+                    LIVE IST: {formattedIstTime} (UTC+5:30)
                   </span>
                 </div>
                 <h1 className="text-2xl sm:text-3xl font-black text-white tracking-tight flex items-center gap-2">
@@ -1509,9 +1532,16 @@ export default function AILabPage() {
                 <div className="flex flex-col sm:flex-row sm:items-center justify-between pb-3 border-b border-slate-800 mb-4 gap-2">
                   <div className="flex items-center gap-2">
                     <BarChart3 className="w-4 h-4 text-cyan-400" />
-                    <h3 className="text-sm font-bold text-white">
-                      1-Minute Candlestick Chart Structure ({currentAnalysis?.asset || (selectedAsset === 'ALL' ? (activeTab === 'OTC' ? 'EURUSD-OTC' : 'AUDCAD') : selectedAsset)})
-                    </h3>
+                    <div>
+                      <h3 className="text-sm font-bold text-white flex items-center gap-2">
+                        1-Minute Candlestick Chart Structure ({currentAnalysis?.asset || (selectedAsset === 'ALL' ? (activeTab === 'OTC' ? 'USDINR-OTC' : 'USDJPY') : selectedAsset)})
+                      </h3>
+                      <p className="text-[10px] text-cyan-400 font-mono mt-0.5 flex items-center gap-2">
+                        <span>📅 {formattedTodayDate}</span>
+                        <span>•</span>
+                        <span>⏰ {formattedIstTime} (UTC+5:30)</span>
+                      </p>
+                    </div>
                   </div>
                   <div className="flex items-center gap-3 text-[11px] font-mono text-slate-400">
                     <span className="flex items-center gap-1.5">
@@ -1547,12 +1577,20 @@ export default function AILabPage() {
                       </div>
                       <span className="text-[10px] text-emerald-400 font-bold flex items-center gap-1 mt-0.5">
                         <span className="w-1.5 h-1.5 rounded-full bg-emerald-400"></span>
-                        LIVE QUOTEX TELEMETRY (SECOND-TO-SECOND SYNC)
+                        LIVE QUOTEX TELEMETRY • {formattedShortDate} • SECOND-TO-SECOND SYNC
                       </span>
                     </div>
                   </div>
 
                   <div className="flex flex-wrap items-center gap-3 sm:gap-4">
+                    <div className="flex items-center gap-2 px-2.5 py-1 rounded-xl bg-slate-950 border border-slate-800 text-[11px] text-slate-300">
+                      <Calendar className="w-3.5 h-3.5 text-emerald-400" />
+                      <span className="font-bold text-emerald-300">{formattedShortDate}</span>
+                      <span className="text-slate-600">|</span>
+                      <Clock className="w-3.5 h-3.5 text-cyan-400" />
+                      <span className="font-bold text-cyan-300">{now.toLocaleTimeString('en-IN', { timeZone: 'Asia/Kolkata', hour12: false })} IST</span>
+                    </div>
+
                     <button
                       type="button"
                       onClick={() => setIsSyncModalOpen(true)}
@@ -1577,10 +1615,6 @@ export default function AILabPage() {
                             )
                           : '---'}
                       </span>
-                    </div>
-                    <div className="hidden sm:flex items-center gap-1.5 text-xs text-slate-400 font-mono">
-                      <Clock className="w-4 h-4 text-cyan-400" />
-                      <span>{now.toLocaleTimeString('en-IN', { timeZone: 'Asia/Kolkata', hour12: false })} IST</span>
                     </div>
                   </div>
                 </div>
@@ -1653,7 +1687,21 @@ export default function AILabPage() {
                               </text>
 
                               {/* Quotex-style Horizontal Price Guideline for Current Candle */}
-                              <line x1="0" y1={yCurrent} x2="695" y2={yCurrent} stroke="#0284c7" strokeDasharray="2,2" strokeWidth="0.8" opacity="0.8" />
+                              <line x1="0" y1={yCurrent} x2="695" y2={yCurrent} stroke="#0284c7" strokeDasharray="3,3" strokeWidth="1" opacity="0.85" />
+
+                              {/* Quotex-style Countdown Timer on Price Line (e.g. 00:21 matching Quotex screen) */}
+                              {(() => {
+                                const secsRemaining = 60 - now.getSeconds();
+                                const countdownStr = `00:${secsRemaining < 10 ? '0' : ''}${secsRemaining === 60 ? '00' : secsRemaining}`;
+                                return (
+                                  <g transform={`translate(635, ${Math.max(16, Math.min(195, yCurrent - 8))})`}>
+                                    <rect x="0" y="0" width="52" height="16" rx="3" fill="#0f172a" stroke="#334155" strokeWidth="0.8" />
+                                    <text x="26" y="11" fill="#94a3b8" fontSize="8.5" fontWeight="bold" textAnchor="middle" fontFamily="monospace">
+                                      {countdownStr}
+                                    </text>
+                                  </g>
+                                );
+                              })()}
                               
                               {/* Glowing Quotex Current Price Tag */}
                               <g transform={`translate(695, ${Math.max(18, Math.min(195, yCurrent - 9))})`}>
@@ -2414,7 +2462,7 @@ export default function AILabPage() {
                   <li>Paste the <code className="text-amber-300 font-mono">ssid</code> below and click <strong>Link Quotex Terminal</strong>.</li>
                 </ol>
                 <div className="p-2 rounded-xl bg-cyan-950/40 border border-cyan-800/40 text-[10px] text-cyan-300">
-                  Note: Even without an SSID, our platform uses authentic Quotex base prices (USD/INR OTC @ 105.1000, USD/PKR @ 278.40, EUR/CAD @ 1.5572) with 0ms latency.
+                  Note: Even without an SSID, our platform uses authentic Quotex base prices (USD/INR OTC @ 105.0585, USD/PKR @ 278.40, EUR/CAD @ 1.5572) with 0ms latency.
                 </div>
               </div>
 

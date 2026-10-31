@@ -12,7 +12,7 @@ def get_ist_now() -> datetime:
 # Base price anchor points for all Quotex instruments (OTC and Live)
 INSTRUMENT_BASE_PRICES = {
     # --- Quotex 24/7 OTC Currency Pairs (Calibrated to Quotex Live Trading Terminal) ---
-    "USDINR-OTC": 105.100,
+    "USDINR-OTC": 105.0585,
     "USDPKR-OTC": 278.40,
     "USDBRL-OTC": 5.4420,
     "USDZAR-OTC": 16.7220,
@@ -214,7 +214,7 @@ def generate_otc_calibrated_candles(
     current_price = base_price
     momentum = (rng.random() - 0.5) * volatility * 0.2
 
-    for i in range(count, 0, -1):
+    for i in range(count - 1, -1, -1):
         bar_time = end_time - timedelta(minutes=i)
 
         # Autoregressive momentum walk with strong mean-reversion pull towards base_price

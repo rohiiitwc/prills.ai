@@ -167,3 +167,4 @@ def get_live_tick_for_asset(asset: str) -> Optional[float]:
     if f"{clean}-OTC" in LATEST_QUOTEX_TICKS:
         return LATEST_QUOTEX_TICKS[f"{clean}-OTC"]["price"]
     return None
+

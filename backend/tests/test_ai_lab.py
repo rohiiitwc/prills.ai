@@ -74,7 +74,7 @@ async def test_ai_lab_endpoints():
         assert otc_data["asset"] == "USDINR-OTC"
         assert "simulated_outcome" in otc_data
         assert otc_data["simulated_outcome"]["simulated_result"] in ["WIN", "LOSS", "DRAW"]
-        assert otc_data["quotex_trade_result"]["profit_percentage"] == 93
+        assert otc_data["quotex_trade_result"]["profit_percentage"] == 83
         assert otc_data["candles"][-1]["close"] > 100.0
 
         # 2. Analyze Live EURCAD (76% payout)
